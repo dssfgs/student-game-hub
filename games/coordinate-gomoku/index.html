@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>座標五子棋</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <section class="board-wrap" aria-label="棋盤">
+      <canvas id="board" aria-label="座標平面棋盤，x 和 y 的範圍都是 -7 至 7"></canvas>
+      <div id="hover" class="hover-tip" hidden></div>
+      <div id="result" class="result" hidden role="status">
+        <p id="resultTitle" class="result-title"></p>
+        <p id="resultLine" class="result-line"></p>
+        <p id="resultCoords" class="result-coords"></p>
+        <button id="againBtn" class="btn btn-primary" type="button">再玩一局</button>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <header class="panel-head">
+        <h1>座標五子棋</h1>
+        <p class="sub">在座標平面上先連成五子的一方勝出</p>
+      </header>
+
+      <div id="turn" class="turn" role="status" aria-live="polite">
+        <span id="turnStone" class="stone black" aria-hidden="true"></span>
+        <span id="turnText">輪到黑子</span>
+      </div>
+
+      <fieldset class="seg">
+        <legend>對手</legend>
+        <label><input type="radio" name="opponent" value="human" checked /><span>雙人對戰</span></label>
+        <label><input type="radio" name="opponent" value="ai" /><span>對電腦</span></label>
+      </fieldset>
+
+      <fieldset class="seg">
+        <legend>落子方法</legend>
+        <label><input type="radio" name="input" value="click" checked /><span>點擊棋盤</span></label>
+        <label><input type="radio" name="input" value="type" /><span>輸入座標</span></label>
+      </fieldset>
+
+      <form id="coordForm" class="coord-form" autocomplete="off" novalidate>
+        <span class="paren" aria-hidden="true">(</span>
+        <label class="coord-field">
+          <span class="coord-label">x</span>
+          <input id="xInput" type="number" inputmode="numeric" min="-7" max="7" step="1" required aria-label="x 座標" />
+        </label>
+        <span class="paren" aria-hidden="true">,</span>
+        <label class="coord-field">
+          <span class="coord-label">y</span>
+          <input id="yInput" type="number" inputmode="numeric" min="-7" max="7" step="1" required aria-label="y 座標" />
+        </label>
+        <span class="paren" aria-hidden="true">)</span>
+        <button class="btn btn-primary" type="submit">落子</button>
+      </form>
+      <p id="formMsg" class="form-msg" role="alert"></p>
+
+      <div class="actions">
+        <button id="undoBtn" class="btn" type="button">悔棋</button>
+        <button id="resetBtn" class="btn" type="button">重新開始</button>
+      </div>
+
+      <section class="log" aria-label="落子記錄">
+        <h2>落子記錄</h2>
+        <ol id="moves" class="moves"></ol>
+        <p id="movesEmpty" class="moves-empty">黑子先行。試試下在原點 (0, 0)。</p>
+      </section>
+    </aside>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>

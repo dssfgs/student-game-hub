@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>製作教學｜AI 遊戲館</title>
+  <meta name="description" content="三個步驟：請 AI 寫遊戲、儲存檔案、上傳到遊戲館。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@700;800;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="assets/css/base.css" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">跳至主要內容</a>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="index.html"><span data-site-name>AI 遊戲館</span></a>
+      <nav class="site-nav" aria-label="主選單">
+        <a class="nav-home" href="index.html">遊戲大廳</a>
+        <a href="guide.html" aria-current="page">製作教學</a>
+        <a class="btn btn-primary" href="upload.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-upload"></use></svg>上傳遊戲</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="container default">
+    <div class="page-head">
+      <h1>三步做出你的網頁遊戲</h1>
+      <p>不需要懂得寫程式。把想法告訴 AI，測試好，再上傳給全班試玩。</p>
+    </div>
+
+    <ol class="guide-steps">
+      <li>
+        <div class="card">
+          <h2>請 AI 幫你寫遊戲</h2>
+          <p>打開你常用的 AI 工具，清楚說明三件事：<strong>玩甚麼</strong>、<strong>怎樣操作</strong>、<strong>怎樣算贏</strong>。最後記得要求它輸出「一個完整的 HTML 檔案」。</p>
+          <p>以下是一個例子，你可以複製後改成自己的遊戲：</p>
+          <div class="prompt-box">
+            <pre id="prompt">請幫我製作一個可以在瀏覽器玩的「座標五子棋」遊戲。
+
+要求：
+1. 棋盤是一個座標平面，x 軸和 y 軸的範圍都是 −7 至 7，要畫出座標軸和刻度。
+2. 兩位玩家輪流落子，可以點擊棋盤，也可以輸入 (x, y) 座標落子。
+3. 顯示每一步的座標記錄；先把五顆棋子連成一線的一方勝出。
+4. 介面使用繁體中文，在電腦和平板上都能使用。
+5. 請把 HTML、CSS 和 JavaScript 全部寫在同一個 index.html 檔案內，不要使用需要安裝的工具。</pre>
+            <div class="bar-row">
+              <button class="btn btn-sm" type="button" id="copyPrompt"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-copy"></use></svg>複製這段文字</button>
+            </div>
+          </div>
+          <p>遊戲有問題？直接把情況告訴 AI，例如「按下開始之後沒有反應，請修正」，讓它修改到你滿意為止。</p>
+        </div>
+      </li>
+
+      <li>
+        <div class="card">
+          <h2>儲存檔案並試玩</h2>
+          <p>如果 AI 只給你一段程式碼，可以直接在上傳頁選擇「貼上程式碼」，不用另外存檔。</p>
+          <p>如果遊戲有多個檔案（例如另外的 JS、CSS、圖片或音效），請把它們放在同一個資料夾內，主頁命名為 <code class="inline">index.html</code>：</p>
+          <div class="tree" role="img" aria-label="資料夾結構例子：我的遊戲資料夾內有 index.html、game.js、style.css 和 images 資料夾">我的遊戲/
+├─ index.html    ← 主頁
+├─ game.js
+├─ style.css
+└─ images/
+   └─ stone.png</div>
+          <p>在電腦上按兩下 <code class="inline">index.html</code>，用瀏覽器打開試玩。確定可以正常運作才上傳。</p>
+          <ul>
+            <li>檔案之間要用「相對路徑」連結，例如 <code class="inline">&lt;script src="game.js"&gt;</code>。</li>
+            <li>不要出現 <code class="inline">C:\Users\...</code> 這類電腦內的路徑，其他人會打不開。</li>
+            <li>檔案名稱的英文大小寫要完全一致，<code class="inline">Game.js</code> 和 <code class="inline">game.js</code> 在網站上是兩個不同的檔案。</li>
+          </ul>
+        </div>
+      </li>
+
+      <li>
+        <div class="card">
+          <h2>上傳到遊戲館</h2>
+          <p>按「上傳遊戲」，選擇檔案、整個資料夾或 ZIP 壓縮檔，填寫遊戲名稱和作者，再輸入老師提供的上傳密碼。大約 1 分鐘後，遊戲就會出現在大廳。</p>
+          <p>上傳前可以按「先試玩看看」預覽；如果漏了檔案，系統會提醒你。</p>
+          <p><a class="btn btn-primary" href="upload.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-upload"></use></svg>前往上傳</a></p>
+        </div>
+      </li>
+    </ol>
+
+    <section class="faq" aria-labelledby="faqTitle">
+      <h2 id="faqTitle">常見問題</h2>
+      <details>
+        <summary>上傳後畫面一片空白，怎麼辦？<svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-chevron-right"></use></svg></summary>
+        <p>最常見的原因是漏了檔案，或者檔案路徑寫錯。請檢查是否已把所有 JS、CSS 和圖片一併上傳，並確認檔案名稱的大小寫一致。也可以把問題告訴 AI，請它把所有內容合併到同一個 HTML 檔案。</p>
+      </details>
+      <details>
+        <summary>遊戲可以用圖片和音效嗎？<svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-chevron-right"></use></svg></summary>
+        <p>可以。每個檔案最大 10 MB，一個遊戲最多 80 個檔案、合共 30 MB。圖片太大的話，請先縮小再上傳。</p>
+      </details>
+      <details>
+        <summary>在 iPad 上可以上傳嗎？<svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-chevron-right"></use></svg></summary>
+        <p>可以。iPad 不能選擇整個資料夾，但可以用「選擇檔案」一次選多個檔案、上傳 ZIP 壓縮檔，或者直接貼上程式碼。</p>
+      </details>
+      <details>
+        <summary>想修改已經上傳的遊戲？<svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-chevron-right"></use></svg></summary>
+        <p>改好之後重新上傳一次，然後請老師把舊版本刪除。</p>
+      </details>
+      <details>
+        <summary>上傳密碼是甚麼？<svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-chevron-right"></use></svg></summary>
+        <p>上傳密碼由老師提供，只給本班同學使用。請不要把密碼告訴其他人。</p>
+      </details>
+      <details>
+        <summary>甚麼內容不可以上傳？<svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-chevron-right"></use></svg></summary>
+        <p>遊戲館是公開網站。請不要放入真實的個人資料（例如電話、地址、相片）、不雅或欺凌他人的內容，也不要直接使用別人擁有版權的圖片和音樂。</p>
+      </details>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>© <span data-year>2026</span> <span data-site-name>AI 遊戲館</span>　欣賞同學的作品，也請尊重別人的創作。</p>
+      <nav aria-label="頁尾連結">
+        <a href="admin.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-lock"></use></svg>老師管理</a>
+        <a data-repo-link href="https://github.com/dssfgs/student-game-hub" target="_blank" rel="noopener noreferrer">GitHub 儲存庫<svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-external-link"></use></svg></a>
+      </nav>
+    </div>
+  </footer>
+
+  <script type="module" src="assets/js/guide.js"></script>
+</body>
+</html>

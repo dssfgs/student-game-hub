@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "updated": "2026-11-13T04:00:00.000Z",
+  "games": [
+    {
+      "id": "coordinate-gomoku",
+      "title": "座標五子棋",
+      "author": "示範作品",
+      "klass": "",
+      "desc": "在座標平面上對弈：點擊棋盤或輸入 (x, y) 座標落子，先連成五子的一方勝出。可以雙人對戰，也可以挑戰電腦。",
+      "tags": ["數學", "棋類"],
+      "tool": "Perplexity",
+      "entry": "index.html",
+      "cover": null,
+      "files": 3,
+      "bytes": 26722,
+      "created": "2026-11-13T04:00:00.000Z",
+      "status": "published"
+    }
+  ]
+}

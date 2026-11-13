@@ -1,0 +1,11 @@
+{
+  "siteName": "AI 遊戲館",
+  "owner": "dssfgs",
+  "repo": "student-game-hub",
+  "branch": "main",
+  "uploadOpen": true,
+  "requireApproval": false,
+  "tags": ["數學", "中文", "英文", "科學", "人文", "益智", "棋類", "動作", "問答", "其他"],
+  "studentKey": null,
+  "teacherKey": null
+}

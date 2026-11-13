@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>遊玩｜AI 遊戲館</title>
+  <meta name="description" content="在 AI 遊戲館試玩同學的作品。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@700;800;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="assets/css/base.css" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">跳至主要內容</a>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="index.html"><span data-site-name>AI 遊戲館</span></a>
+      <nav class="site-nav" aria-label="主選單">
+        <a class="nav-home" href="index.html">遊戲大廳</a>
+        <a href="guide.html">製作教學</a>
+        <a class="btn btn-primary" href="upload.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-upload"></use></svg>上傳遊戲</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="container">
+    <div id="loading" class="play-bar" aria-hidden="true">
+      <div class="title">
+        <div class="skeleton" style="height:2rem;width:min(60%,320px)"></div>
+        <div class="skeleton skeleton-line" style="width:140px"></div>
+      </div>
+    </div>
+
+    <div id="missing" hidden></div>
+
+    <div id="game" hidden>
+      <div class="play-bar">
+        <div class="title">
+          <h1 id="gTitle"></h1>
+          <p class="by" id="gBy"></p>
+        </div>
+        <div class="actions">
+          <button class="btn" type="button" id="fsBtn"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-maximize"></use></svg>全螢幕</button>
+          <a class="btn" id="openBtn" target="_blank" rel="noopener noreferrer"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-external-link"></use></svg>新分頁開啟</a>
+          <button class="btn" type="button" id="shareBtn"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-qr-code"></use></svg>分享</button>
+        </div>
+      </div>
+
+      <div class="stage" id="stage">
+        <iframe id="frame" title="遊戲畫面" allow="fullscreen; autoplay; gamepad"></iframe>
+      </div>
+
+      <div class="play-info">
+        <div>
+          <p class="desc" id="gDesc"></p>
+          <div class="tag-row" id="gTags"></div>
+        </div>
+        <dl id="gMeta"></dl>
+      </div>
+
+      <p style="margin-top: var(--space-8)"><a class="btn btn-ghost" href="index.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-arrow-left"></use></svg>回到遊戲大廳</a></p>
+    </div>
+
+    <dialog id="shareDialog" aria-labelledby="shareTitle">
+      <div class="dialog-head">
+        <h2 id="shareTitle">分享這個遊戲</h2>
+        <button class="icon-btn" type="button" id="closeShare" aria-label="關閉"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-x"></use></svg></button>
+      </div>
+      <div class="dialog-body">
+        <div class="share-box">
+          <div class="qr" id="qr" role="img" aria-label="遊戲連結的 QR code"></div>
+          <div>
+            <p>用平板或手機掃描 QR code，或者複製連結傳給同學。</p>
+            <div class="copy-row">
+              <label class="sr-only" for="shareUrl">遊戲連結</label>
+              <input class="input" id="shareUrl" readonly />
+              <button class="btn btn-primary" type="button" id="copyBtn"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-copy"></use></svg>複製</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </dialog>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>© <span data-year>2026</span> <span data-site-name>AI 遊戲館</span>　欣賞同學的作品，也請尊重別人的創作。</p>
+      <nav aria-label="頁尾連結">
+        <a href="admin.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-lock"></use></svg>老師管理</a>
+        <a data-repo-link href="https://github.com/dssfgs/student-game-hub" target="_blank" rel="noopener noreferrer">GitHub 儲存庫<svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-external-link"></use></svg></a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="vendor/qrcode.js" defer></script>
+  <script type="module" src="assets/js/play.js"></script>
+</body>
+</html>

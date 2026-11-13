@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>上傳遊戲｜AI 遊戲館</title>
+  <meta name="description" content="把你用 AI 製作的 HTML 遊戲上傳到遊戲館。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@700;800;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="assets/css/base.css" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">跳至主要內容</a>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="index.html"><span data-site-name>AI 遊戲館</span></a>
+      <nav class="site-nav" aria-label="主選單">
+        <a class="nav-home" href="index.html">遊戲大廳</a>
+        <a href="guide.html">製作教學</a>
+        <a class="btn btn-primary" href="upload.html" aria-current="page"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-upload"></use></svg>上傳遊戲</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="container narrow">
+    <div class="page-head">
+      <h1>上傳遊戲</h1>
+      <p>三個步驟，把你的遊戲放進遊戲館。</p>
+    </div>
+
+    <div id="notice"></div>
+
+    <div id="wizard" hidden>
+      <ol class="steps" id="steps" aria-label="上傳步驟">
+        <li data-step="1" aria-current="step"><span class="n">1</span><span>選擇<span class="lbl-long">遊戲</span>檔案</span></li>
+        <li data-step="2"><span class="n">2</span><span>填寫<span class="lbl-long">遊戲</span>資料</span></li>
+        <li data-step="3"><span class="n">3</span><span>確認上傳</span></li>
+      </ol>
+
+      <!-- 步驟一 -->
+      <section class="card step-panel" id="step1" aria-labelledby="s1h">
+        <h2 id="s1h">你的遊戲檔案在哪裡？</h2>
+
+        <div class="tabs" role="tablist" aria-label="提供遊戲的方法">
+          <button type="button" role="tab" id="tabFiles" aria-selected="true" aria-controls="paneFiles"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-folder-up"></use></svg>上傳檔案</button>
+          <button type="button" role="tab" id="tabPaste" aria-selected="false" aria-controls="panePaste"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-clipboard-paste"></use></svg>貼上程式碼</button>
+        </div>
+
+        <div id="paneFiles" role="tabpanel" aria-labelledby="tabFiles">
+          <div class="dropzone" id="drop">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-cloud-upload"></use></svg>
+            <p class="big">把遊戲檔案拖到這裡</p>
+            <p class="hint">可以是一個 HTML 檔、整個資料夾（包括 JS、CSS、圖片），或者 ZIP 壓縮檔</p>
+            <div class="row">
+              <button class="btn btn-primary" type="button" id="pickFiles"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-file-code"></use></svg>選擇檔案</button>
+              <button class="btn" type="button" id="pickDir"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-folder-up"></use></svg>選擇資料夾</button>
+            </div>
+          </div>
+          <input type="file" id="fileInput" multiple hidden />
+          <input type="file" id="dirInput" webkitdirectory hidden />
+        </div>
+
+        <div id="panePaste" role="tabpanel" aria-labelledby="tabPaste" hidden>
+          <div class="field">
+            <label for="code">把 AI 給你的完整 HTML 程式碼貼在這裡</label>
+            <textarea class="textarea code" id="code" spellcheck="false" placeholder="&lt;!DOCTYPE html&gt;&#10;&lt;html&gt;&#10;  ...&#10;&lt;/html&gt;"></textarea>
+            <p class="hint">適合所有內容都在同一個 HTML 檔裡的遊戲。如果遊戲還有其他 JS 或圖片檔，請改用「上傳檔案」。</p>
+          </div>
+        </div>
+
+        <div class="file-summary" id="summary" hidden>
+          <div class="file-summary-head">
+            <strong id="summaryTitle"></strong>
+            <button class="btn btn-ghost btn-sm" type="button" id="clearFiles"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-trash-2"></use></svg>全部清除</button>
+          </div>
+          <ul class="file-list" id="fileList"></ul>
+
+          <div class="field" id="entryField" hidden style="margin-top: var(--space-4)">
+            <label for="entry">哪一個是遊戲的主頁？</label>
+            <select class="select" id="entry"></select>
+            <p class="hint">玩家打開遊戲時最先看到的那一頁，通常是 index.html。</p>
+          </div>
+        </div>
+
+        <div id="problems" style="margin-top: var(--space-4)" aria-live="polite"></div>
+
+        <div class="panel-actions">
+          <button class="btn" type="button" id="previewBtn" disabled><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-play"></use></svg>先試玩看看</button>
+          <div class="right">
+            <button class="btn btn-primary" type="button" id="next1" disabled>下一步<svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-arrow-right"></use></svg></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 步驟二 -->
+      <section class="card step-panel" id="step2" aria-labelledby="s2h" hidden>
+        <h2 id="s2h">介紹一下你的遊戲</h2>
+        <form id="infoForm" novalidate>
+          <div class="field">
+            <label for="title">遊戲名稱<span class="req" aria-hidden="true">*</span></label>
+            <input class="input" id="title" name="title" maxlength="30" required placeholder="例如：座標五子棋" autocomplete="off" />
+            <p class="field-error" id="titleErr" role="alert"></p>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="author">作者<span class="req" aria-hidden="true">*</span></label>
+              <input class="input" id="author" name="author" maxlength="20" required placeholder="姓名或暱稱" autocomplete="off" />
+              <p class="field-error" id="authorErr" role="alert"></p>
+            </div>
+            <div class="field">
+              <label for="klass">班別<span class="opt">（可不填）</span></label>
+              <input class="input" id="klass" name="klass" maxlength="10" placeholder="例如：2A" autocomplete="off" />
+            </div>
+          </div>
+          <p class="hint" style="margin-top: var(--space-2)">遊戲館是公開網站，作者可以只寫暱稱。</p>
+
+          <div class="field">
+            <label for="desc">玩法簡介<span class="opt">（可不填）</span></label>
+            <textarea class="textarea" id="desc" name="desc" maxlength="200" placeholder="例如：輸入 (x, y) 座標落子，先連成五子的一方勝出。"></textarea>
+          </div>
+
+          <fieldset class="field">
+            <legend>分類<span class="opt">（最多選 3 個）</span></legend>
+            <div class="chips" id="tagChips"></div>
+          </fieldset>
+
+          <div class="field">
+            <label for="tool">用了哪個 AI 工具？<span class="opt">（可不填）</span></label>
+            <input class="input" id="tool" name="tool" maxlength="30" placeholder="例如：Perplexity、ChatGPT、Claude" autocomplete="off" />
+          </div>
+
+          <div class="field">
+            <span class="label" id="coverLabel">封面圖片<span class="opt">（可不填）</span></span>
+            <div class="cover-pick">
+              <div id="coverPreview"></div>
+              <div>
+                <div class="btns">
+                  <button class="btn" type="button" id="pickCover" aria-describedby="coverLabel"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-image"></use></svg>選擇圖片</button>
+                  <button class="btn btn-ghost" type="button" id="removeCover" hidden><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-x"></use></svg>移除</button>
+                </div>
+                <p class="hint" style="margin-top: var(--space-2)">可以用遊戲的截圖。沒有圖片的話，會用遊戲名稱的第一個字做封面。</p>
+                <p class="field-error" id="coverErr" role="alert"></p>
+              </div>
+            </div>
+            <input type="file" id="coverInput" accept="image/*" hidden />
+          </div>
+
+          <div class="panel-actions">
+            <button class="btn" type="button" id="back2"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-arrow-left"></use></svg>上一步</button>
+            <div class="right">
+              <button class="btn btn-primary" type="submit" id="next2">下一步<svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-arrow-right"></use></svg></button>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <!-- 步驟三 -->
+      <section class="card step-panel" id="step3" aria-labelledby="s3h" hidden>
+        <div id="confirmView">
+          <h2 id="s3h">確認後上傳</h2>
+          <div class="review" id="review"></div>
+
+          <form id="uploadForm" novalidate>
+            <div class="field">
+              <label for="password">上傳密碼<span class="req" aria-hidden="true">*</span></label>
+              <div class="input-group">
+                <input class="input" id="password" type="password" autocomplete="off" required aria-describedby="pwHint pwErr" />
+                <button class="toggle" type="button" id="togglePw" aria-label="顯示密碼" aria-pressed="false"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-eye"></use></svg></button>
+              </div>
+              <p class="hint" id="pwHint">密碼由老師提供。</p>
+              <p class="field-error" id="pwErr" role="alert"></p>
+            </div>
+
+            <div class="panel-actions">
+              <button class="btn" type="button" id="back3"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-arrow-left"></use></svg>上一步</button>
+              <div class="right">
+                <button class="btn btn-primary btn-lg" type="submit" id="uploadBtn"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-upload"></use></svg>上傳到遊戲館</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div id="progressView" hidden>
+          <h2>正在上傳，請不要關閉這一頁</h2>
+          <ol class="progress-list" id="progressList">
+            <li data-p="auth"><span class="dot"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-check"></use></svg></span><span>檢查上傳密碼</span></li>
+            <li data-p="files"><span class="dot"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-check"></use></svg></span><span id="pFilesText">上傳遊戲檔案</span></li>
+            <li data-p="commit"><span class="dot"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-check"></use></svg></span><span>放進遊戲館</span></li>
+          </ol>
+          <div class="bar" role="progressbar" aria-label="上傳進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="bar"><i></i></div>
+          <div id="uploadError" style="margin-top: var(--space-5)" role="alert"></div>
+        </div>
+
+        <div id="successView" class="success" hidden>
+          <div class="tick"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-check"></use></svg></div>
+          <h2 id="successTitle" tabindex="-1">上傳成功！</h2>
+          <p id="successText"></p>
+          <div class="live" id="liveStatus" role="status"></div>
+          <div class="row">
+            <a class="btn btn-primary btn-lg" id="playLink" href="index.html" aria-disabled="true"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-play"></use></svg>立即遊玩</a>
+            <a class="btn btn-lg" href="index.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-house"></use></svg>回到遊戲大廳</a>
+          </div>
+          <p style="margin-top: var(--space-5)"><a href="upload.html">再上傳另一個遊戲</a></p>
+        </div>
+      </section>
+    </div>
+
+    <dialog id="previewDialog" class="wide" aria-labelledby="previewTitle">
+      <div class="dialog-head">
+        <h2 id="previewTitle">試玩預覽</h2>
+        <button class="icon-btn" type="button" id="closePreview" aria-label="關閉預覽"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-x"></use></svg></button>
+      </div>
+      <div class="dialog-body flush">
+        <iframe id="previewFrame" title="遊戲預覽" sandbox="allow-scripts allow-modals allow-pointer-lock allow-forms"></iframe>
+      </div>
+    </dialog>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>© <span data-year>2026</span> <span data-site-name>AI 遊戲館</span>　欣賞同學的作品，也請尊重別人的創作。</p>
+      <nav aria-label="頁尾連結">
+        <a href="admin.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-lock"></use></svg>老師管理</a>
+        <a data-repo-link href="https://github.com/dssfgs/student-game-hub" target="_blank" rel="noopener noreferrer">GitHub 儲存庫<svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-external-link"></use></svg></a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="vendor/jszip.min.js" defer></script>
+  <script type="module" src="assets/js/upload.js"></script>
+</body>
+</html>

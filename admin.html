@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>老師管理｜AI 遊戲館</title>
+  <meta name="description" content="設定上傳密碼和管理遊戲。" />
+  <meta name="robots" content="noindex" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@700;800;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="assets/css/base.css" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">跳至主要內容</a>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="index.html"><span data-site-name>AI 遊戲館</span></a>
+      <nav class="site-nav" aria-label="主選單">
+        <a class="nav-home" href="index.html">遊戲大廳</a>
+        <a href="guide.html">製作教學</a>
+        <a class="btn btn-primary" href="upload.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-upload"></use></svg>上傳遊戲</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="container default">
+    <div class="page-head">
+      <h1>老師管理</h1>
+      <p id="adminSub">設定上傳密碼、管理同學上傳的遊戲。</p>
+    </div>
+
+    <div id="fatal"></div>
+
+    <!-- 第一次設定／更換權杖 -->
+    <section class="card" id="setup" aria-labelledby="setupTitle" hidden>
+      <h2 id="setupTitle">第一次設定</h2>
+      <p>同學不需要 GitHub 帳戶也能上傳，因為網站會代他們把檔案寫入你的儲存庫。為此需要一把只能存取這個儲存庫的「權杖」（token）。權杖會先用密碼加密，才儲存到網站。</p>
+
+      <ol class="setup-steps" style="margin-top: var(--space-6)">
+        <li>
+          <h3>在 GitHub 建立權杖</h3>
+          <p>以儲存庫擁有者的帳戶登入 GitHub，然後按下面的按鈕。名稱、有效期和權限已經預先填好，你只需要：</p>
+          <ul>
+            <li>在「Repository access」選 <strong>Only select repositories</strong>，然後只選 <strong id="repoName" style="white-space: nowrap"></strong></li>
+            <li>確認「Permissions」內 <strong>Contents</strong> 是 <strong>Read and write</strong></li>
+            <li>按「Generate token」，複製以 <code class="inline">github_pat_</code> 開頭的一串文字</li>
+          </ul>
+          <a class="btn" id="tokenLink" target="_blank" rel="noopener noreferrer"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-key-round"></use></svg>前往 GitHub 建立權杖<svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-external-link"></use></svg></a>
+        </li>
+        <li>
+          <h3>貼上權杖</h3>
+          <form id="tokenForm" novalidate>
+            <div class="field">
+              <label for="token">GitHub 權杖</label>
+              <div class="copy-row" style="margin-top: 0">
+                <input class="input" id="token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_..." />
+                <button class="btn" type="submit" id="verifyBtn">檢查</button>
+              </div>
+              <p class="inline-status" id="tokenStatus" role="status"></p>
+            </div>
+          </form>
+        </li>
+        <li>
+          <h3>設定兩個密碼</h3>
+          <form id="pwForm" novalidate>
+            <div class="field-row">
+              <div class="field">
+                <label for="studentPw">學生上傳密碼</label>
+                <input class="input" id="studentPw" type="text" autocomplete="off" minlength="8" />
+                <p class="hint">告訴同學，上傳時需要輸入。最少 8 個字元。</p>
+                <p class="field-error" id="studentPwErr" role="alert"></p>
+              </div>
+              <div class="field">
+                <label for="teacherPw">老師管理密碼</label>
+                <input class="input" id="teacherPw" type="password" autocomplete="new-password" minlength="10" />
+                <p class="hint">只有你知道，用來登入這一頁。最少 10 個字元。</p>
+                <p class="field-error" id="teacherPwErr" role="alert"></p>
+              </div>
+            </div>
+            <div class="note warn" style="margin-top: var(--space-4)"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-triangle-alert"></use></svg><div>加密後的權杖存放在公開的網站上，密碼越難猜越安全。請混合英文字母和數字，不要使用學校名稱、班別或年份等容易猜到的字詞。</div></div>
+            <div class="panel-actions">
+              <button class="btn" type="button" id="cancelSetup" hidden>取消</button>
+              <div class="right">
+                <button class="btn btn-primary btn-lg" type="submit" id="finishSetup" disabled><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-check"></use></svg>完成設定</button>
+              </div>
+            </div>
+            <div id="setupError" role="alert" style="margin-top: var(--space-4)"></div>
+          </form>
+        </li>
+      </ol>
+    </section>
+
+    <!-- 登入 -->
+    <section class="card" id="login" aria-labelledby="loginTitle" hidden style="max-width: 520px">
+      <h2 id="loginTitle">登入</h2>
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label for="loginPw">老師管理密碼</label>
+          <input class="input" id="loginPw" type="password" autocomplete="current-password" />
+          <p class="field-error" id="loginErr" role="alert"></p>
+        </div>
+        <div class="panel-actions">
+          <button class="btn btn-ghost" type="button" id="forgot">忘記密碼？用新權杖重設</button>
+          <div class="right"><button class="btn btn-primary" type="submit" id="loginBtn">登入</button></div>
+        </div>
+      </form>
+    </section>
+
+    <!-- 管理介面 -->
+    <div id="dash" hidden>
+      <div id="dashMsg" aria-live="polite"></div>
+
+      <section class="card" aria-labelledby="gamesH">
+        <div class="card-head">
+          <h2 id="gamesH">遊戲管理 <span class="muted small num" id="gamesCount"></span></h2>
+          <button class="btn btn-sm" type="button" id="reloadGames"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-refresh-cw"></use></svg>重新載入</button>
+        </div>
+        <ul class="admin-list" id="adminList"></ul>
+        <p class="hint" style="margin-top: var(--space-3)">更改會在大約 1 分鐘後於網站生效。</p>
+      </section>
+
+      <section class="card" aria-labelledby="shareH">
+        <h2 id="shareH">把遊戲館分享給同學</h2>
+        <div class="share-box">
+          <div class="qr" id="siteQr" role="img" aria-label="遊戲館網址的 QR code"></div>
+          <div>
+            <p>在課室投影這個 QR code，或者把網址貼到 Google Classroom。</p>
+            <div class="copy-row">
+              <label class="sr-only" for="siteUrl">遊戲館網址</label>
+              <input class="input" id="siteUrl" readonly />
+              <button class="btn btn-primary" type="button" id="copySite"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-copy"></use></svg>複製</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="setH">
+        <h2 id="setH">上傳設定</h2>
+        <div class="switch-row">
+          <div class="txt"><strong id="swOpenL">開放上傳</strong><span>關閉後，同學暫時不能上傳新遊戲。</span></div>
+          <label class="switch"><input type="checkbox" id="swOpen" aria-labelledby="swOpenL" /><span class="track"></span></label>
+        </div>
+        <div class="switch-row">
+          <div class="txt"><strong id="swApproveL">上傳後需要老師審核</strong><span>開啟後，新遊戲要在這一頁按「批准」才會在大廳出現。</span></div>
+          <label class="switch"><input type="checkbox" id="swApprove" aria-labelledby="swApproveL" /><span class="track"></span></label>
+        </div>
+        <form id="nameForm" class="switch-row" style="align-items: flex-end" novalidate>
+          <div class="field" style="flex: 1">
+            <label for="siteName">網站名稱</label>
+            <input class="input" id="siteName" maxlength="20" autocomplete="off" />
+          </div>
+          <button class="btn" type="submit" id="saveName">儲存</button>
+        </form>
+      </section>
+
+      <section class="card" aria-labelledby="secH">
+        <h2 id="secH">密碼和權杖</h2>
+        <form id="changeStudent" novalidate>
+          <div class="field">
+            <label for="newStudentPw">更改學生上傳密碼</label>
+            <div class="copy-row" style="margin-top: 0">
+              <input class="input" id="newStudentPw" type="text" autocomplete="off" placeholder="新密碼（最少 8 個字元）" />
+              <button class="btn" type="submit">更改</button>
+            </div>
+            <p class="field-error" id="newStudentErr" role="alert"></p>
+          </div>
+        </form>
+        <form id="changeTeacher" novalidate style="margin-top: var(--space-5)">
+          <div class="field">
+            <label for="newTeacherPw">更改老師管理密碼</label>
+            <div class="copy-row" style="margin-top: 0">
+              <input class="input" id="newTeacherPw" type="password" autocomplete="new-password" placeholder="新密碼（最少 10 個字元）" />
+              <button class="btn" type="submit">更改</button>
+            </div>
+            <p class="field-error" id="newTeacherErr" role="alert"></p>
+          </div>
+        </form>
+        <div class="note" style="margin-top: var(--space-5)"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-info"></use></svg><div>
+          <p><strong>密碼可能外洩了？</strong>只更改密碼並不足夠，因為舊的加密資料仍留在儲存庫的歷史記錄內。請到 GitHub 刪除舊權杖，再在這裡換上新權杖。權杖到期後，也需要更換一次。</p>
+          <p style="margin-top: var(--space-3)"><button class="btn btn-sm" type="button" id="replaceToken"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-key-round"></use></svg>更換權杖</button>
+          <a class="btn btn-sm btn-ghost" href="https://github.com/settings/personal-access-tokens" target="_blank" rel="noopener noreferrer">在 GitHub 管理權杖<svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-external-link"></use></svg></a></p>
+        </div></div>
+      </section>
+    </div>
+
+    <dialog id="confirmDialog" aria-labelledby="confirmTitle">
+      <div class="dialog-head">
+        <h2 id="confirmTitle">刪除遊戲</h2>
+        <button class="icon-btn" type="button" data-close aria-label="關閉"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-x"></use></svg></button>
+      </div>
+      <div class="dialog-body"><p id="confirmText"></p></div>
+      <div class="dialog-foot">
+        <button class="btn" type="button" data-close>取消</button>
+        <button class="btn btn-danger" type="button" id="confirmOk"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-trash-2"></use></svg>刪除</button>
+      </div>
+    </dialog>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>© <span data-year>2026</span> <span data-site-name>AI 遊戲館</span>　欣賞同學的作品，也請尊重別人的創作。</p>
+      <nav aria-label="頁尾連結">
+        <a href="admin.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-lock"></use></svg>老師管理</a>
+        <a data-repo-link href="https://github.com/dssfgs/student-game-hub" target="_blank" rel="noopener noreferrer">GitHub 儲存庫<svg class="icon" aria-hidden="true" focusable="false"><use href="assets/icons.svg#i-external-link"></use></svg></a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="vendor/qrcode.js" defer></script>
+  <script type="module" src="assets/js/admin.js"></script>
+</body>
+</html>
