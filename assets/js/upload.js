@@ -122,6 +122,13 @@ function bind() {
     });
   });
   el.title.addEventListener('input', renderCoverPreview);
+  // 開始輸入後，立即清除該欄的錯誤提示
+  [[el.title, '#titleErr'], [el.author, '#authorErr']].forEach(([input, err]) => {
+    input.addEventListener('input', () => {
+      if (input.value.trim()) { $(err).textContent = ''; input.removeAttribute('aria-invalid'); }
+    });
+  });
+  el.password.addEventListener('input', () => { el.pwErr.textContent = ''; });
   el.pickCover.addEventListener('click', () => el.coverInput.click());
   el.coverInput.addEventListener('change', onCoverPicked);
   el.removeCover.addEventListener('click', () => { setCover(null); });
