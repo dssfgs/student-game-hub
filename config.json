@@ -5,7 +5,32 @@
   "branch": "main",
   "uploadOpen": true,
   "requireApproval": false,
-  "tags": ["數學", "中文", "英文", "科學", "人文", "益智", "棋類", "動作", "問答", "其他"],
-  "studentKey": null,
-  "teacherKey": null
+  "tags": [
+    "數學",
+    "中文",
+    "英文",
+    "科學",
+    "人文",
+    "益智",
+    "棋類",
+    "動作",
+    "問答",
+    "其他"
+  ],
+  "studentKey": {
+    "v": 1,
+    "kdf": "PBKDF2-SHA256",
+    "iter": 600000,
+    "salt": "235c9NHA84qyfv+xF4mVHg==",
+    "iv": "VBH0SGc+yyGxDgU0",
+    "ct": "BFlFLfVFKhAEmg2ODfCqf4AWkHXhNlo/X9TqLlpCmazokCa9UkpMqWnHwMyE9T1XQJwIx61wjOReRR7wOfBDB/qNHjUzbiQpG1csoRHcoHS2QrKslZ/1arUiTjWkIZX+Ul0Y7dsk5tdv9iIwYQ=="
+  },
+  "teacherKey": {
+    "v": 1,
+    "kdf": "PBKDF2-SHA256",
+    "iter": 600000,
+    "salt": "Es10htCM/jUkZyXouQ3UaA==",
+    "iv": "klXARd0Sox28gzLl",
+    "ct": "f2bLKN+nbLGPEWi0TnUMoQgmNUXrTcX7YWt63cYzSEkywLsYjfpeIvE4yDrzViF3gT9qxmkKmdTnvzymcce+6up3UDTac9ZZeidMM4Aj2Vb3qHtKxUQWKQvj+ixsQqBHgt4+VRGj0dSTJC/isg=="
+  }
 }
