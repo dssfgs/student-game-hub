@@ -1,7 +1,24 @@
 {
   "version": 1,
-  "updated": "2026-11-14T02:53:51.822Z",
+  "updated": "2026-11-14T02:56:44.464Z",
   "games": [
+    {
+      "id": "261114-zzh45",
+      "title": "中國象棋遊戲",
+      "author": "駱行瑭",
+      "klass": "3A",
+      "desc": "普通的象棋遊戲，支持雙人對戰。內有棋盤解析與人機對戰",
+      "tags": [
+        "棋類"
+      ],
+      "tool": "deepseek",
+      "entry": "index.html",
+      "cover": "__cover.jpg",
+      "files": 1,
+      "bytes": 31426,
+      "created": "2026-11-14T02:56:42.270Z",
+      "status": "pending"
+    },
     {
       "id": "261114-cbndr",
       "title": "一元一次不等式",
