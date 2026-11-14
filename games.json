@@ -1,7 +1,24 @@
 {
   "version": 1,
-  "updated": "2026-11-14T02:57:24.368Z",
+  "updated": "2026-11-14T03:10:07.654Z",
   "games": [
+    {
+      "id": "261114-64gqa",
+      "title": "物理模擬實驗",
+      "author": "駱行瑭",
+      "klass": "3A",
+      "desc": "進行模擬物理實驗可更改變數進行實驗,可從中學習知識",
+      "tags": [
+        "科學"
+      ],
+      "tool": "deepseek",
+      "entry": "index.html",
+      "cover": null,
+      "files": 1,
+      "bytes": 67147,
+      "created": "2026-11-14T03:10:05.853Z",
+      "status": "pending"
+    },
     {
       "id": "261114-zzh45",
       "title": "中國象棋遊戲",

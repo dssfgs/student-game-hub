@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>物理实验室 · 交互式模拟</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;background:#0b0f19;color:#dbe4f0;overflow:hidden}
+#app{display:flex;height:100vh;width:100vw}
+
+/* 左侧实验列表 */
+#sidebar{width:186px;flex:none;background:#111827;border-right:1px solid #1f2937;display:flex;flex-direction:column}
+#sidebar h1{font-size:13px;padding:14px 12px 6px;color:#93c5fd;letter-spacing:2px}
+#exlist{flex:1;overflow-y:auto;padding-bottom:24px}
+.cat{font-size:11px;color:#64748b;padding:12px 12px 4px;letter-spacing:1px}
+.ex{font-size:13px;padding:7px 12px;cursor:pointer;color:#cbd5e1;border-left:3px solid transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ex:hover{background:#1e293b}
+.ex.active{background:#1d4ed8;color:#fff;border-left-color:#93c5fd}
+
+/* 舞台 */
+#stage{flex:1;display:flex;flex-direction:column;min-width:0}
+#canvasWrap{flex:1;position:relative;min-height:0;overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+#params{display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding:9px 14px;background:#0f172a;border-top:1px solid #1f2937;min-height:44px}
+.prow{display:flex;align-items:center;gap:7px;font-size:12px;color:#94a3b8}
+.prow input[type=range]{width:96px;accent-color:#3b82f6;cursor:pointer}
+.prow .val{color:#e2e8f0;min-width:42px;font-variant-numeric:tabular-nums}
+select{background:#1e293b;color:#dbe4f0;border:1px solid #334155;border-radius:6px;padding:3px 6px;font-size:12px}
+#toolbar{display:flex;gap:10px;align-items:center;padding:8px 14px;background:#111827;border-top:1px solid #1f2937;font-size:12px;flex-wrap:wrap}
+button{background:#1e293b;color:#dbe4f0;border:1px solid #334155;border-radius:6px;padding:6px 13px;font-size:12px;cursor:pointer;transition:.15s}
+button:hover{background:#334155}
+button.on{background:#1d4ed8;border-color:#3b82f6;color:#fff}
+#hint{margin-left:auto;color:#475569}
+
+/* 右侧讲解 */
+#info{width:330px;flex:none;background:#0f172a;border-left:1px solid #1f2937;overflow-y:auto;padding:18px;font-size:13px;line-height:1.75}
+#info.hidden{display:none}
+#info h2{font-size:16px;color:#93c5fd;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #1e293b}
+#info h3{font-size:12px;color:#f59e0b;margin:16px 0 6px;letter-spacing:1px}
+#info p{color:#b6c2d4;font-size:12.5px}
+.fml{background:#111c2e;border-left:2px solid #3b82f6;padding:6px 10px;margin-bottom:6px;border-radius:0 6px 6px 0;font-family:"Consolas",monospace;font-size:12.5px;color:#a5d8ff}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:#1e293b;border-radius:4px}
+::-webkit-scrollbar-track{background:transparent}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <h1>物理实验室</h1>
+    <div id="exlist"></div>
+  </aside>
+
+  <main id="stage">
+    <div id="canvasWrap"><canvas id="cv"></canvas></div>
+    <div id="params"></div>
+    <div id="toolbar">
+      <button id="btnPlay" class="on">⏸ 暂停</button>
+      <button id="btnReset">↻ 重置</button>
+      <button id="btnInfo" class="on">📘 讲解</button>
+      <span id="hint">点击左侧实验切换 · 拖动滑块改变变量</span>
+    </div>
+  </main>
+
+  <aside id="info">
+    <h2 id="infoName">—</h2>
+    <h3>📜 历史背景</h3>
+    <p id="infoHist"></p>
+    <h3>🧮 关键公式</h3>
+    <div id="infoFormulas"></div>
+    <h3>💡 知识讲解</h3>
+    <p id="infoKnow"></p>
+  </aside>
+</div>
+
+<script>
+/* ===================== 基础工具 ===================== */
+const TAU = Math.PI * 2;
+const clamp = (v,a,b)=> v<a?a:v>b?b:v;
+
+function txt(g,s,x,y,color='#cbd5e1',size=12,align='left',baseline='middle'){
+  g.fillStyle=color;
+  g.font=`${size}px "PingFang SC","Microsoft YaHei",system-ui,sans-serif`;
+  g.textAlign=align; g.textBaseline=baseline;
+  g.fillText(s,x,y);
+}
+function arrow(g,x1,y1,x2,y2,color,lw=2,head=9){
+  const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy);
+  if(len<0.8) return;
+  const ux=dx/len, uy=dy/len;
+  g.strokeStyle=color; g.fillStyle=color; g.lineWidth=lw; g.lineCap='round';
+  g.beginPath(); g.moveTo(x1,y1); g.lineTo(x2-ux*head*0.7, y2-uy*head*0.7); g.stroke();
+  g.beginPath();
+  g.moveTo(x2,y2);
+  g.lineTo(x2-ux*head-uy*head*0.42, y2-uy*head+ux*head*0.42);
+  g.lineTo(x2-ux*head+uy*head*0.42, y2-uy*head-ux*head*0.42);
+  g.closePath(); g.fill();
+}
+function bg(g,W,H,c='#0b0f19'){ g.fillStyle=c; g.fillRect(0,0,W,H); }
+function grid(g,W,H,step=40,color='#131c2b'){
+  g.strokeStyle=color; g.lineWidth=1;
+  for(let x=0;x<W;x+=step){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,H); g.stroke(); }
+  for(let y=0;y<H;y+=step){ g.beginPath(); g.moveTo(0,y); g.lineTo(W,y); g.stroke(); }
+}
+
+/* ===================== 实验定义 ===================== */
+const EX = [];
+
+/* ---------- 1. 抛体运动 ---------- */
+EX.push({
+  id:'proj', name:'抛体运动', cat:'经典力学',
+  hist:'伽利略在 1638 年出版的《关于两门新科学的对话》中，通过斜面实验和逻辑推理指出：抛体运动可以分解为水平方向的匀速直线运动与竖直方向的匀加速运动。这一"运动的合成"思想是近代物理学的开端。',
+  formulas:['水平：x = v₀·cosθ · t','竖直：y = v₀·sinθ · t − ½g t²','射程：R = v₀²·sin2θ / g','最大高度：H = v₀²·sin²θ / (2g)'],
+  knowledge:'忽略空气阻力时，抛体在水平方向不受力，速度分量保持不变；竖直方向只受重力作用，做匀变速运动。两者的合成使得轨迹成为抛物线。当发射角为 45° 时射程最大；互余的两个角度（如 30° 与 60°）射程相同，但高度和飞行时间不同。',
+  params:{
+    v0:{label:'初速度 v₀', min:5, max:80, step:1, val:30},
+    ang:{label:'抛射角 θ', min:5, max:85, step:1, val:45},
+    g:{label:'重力 g', min:1, max:25, step:0.1, val:9.8}
+  },
+  reset(st,p){ st.t=0; st.done=false; st.trail=[]; st.x=0; st.y=0; },
+  update(st,p,dt){
+    if(st.done) return;
+    st.t += dt;
+    const th=p.ang.val*Math.PI/180, vx=p.v0.val*Math.cos(th), vy=p.v0.val*Math.sin(th);
+    st.x = vx*st.t;
+    st.y = vy*st.t - 0.5*p.g.val*st.t*st.t;
+    st.trail.push([st.x,st.y]);
+    if(st.trail.length>3000) st.trail.shift();
+    if(st.y<=0 && st.t>0.08){ st.y=0; st.done=true; }
+  },
+  draw(g,st,p,W,H){
+    bg(g,W,H);
+    const th=p.ang.val*Math.PI/180, v0=p.v0.val, G=p.g.val;
+    const vx=v0*Math.cos(th), vy0=v0*Math.sin(th);
+    const R=vx*2*vy0/G, Hm=vy0*vy0/(2*G);
+    const padL=70,padR=50,padT=60,padB=70;
+    const aw=W-padL-padR, ah=H-padT-padB;
+    const s=Math.min(aw/Math.max(R,1), ah/Math.max(Hm,1));
+    const ox=padL, oy=H-padB;
+    const X=x=>ox+x*s, Y=y=>oy-y*s;
+
+    g.strokeStyle='#334155'; g.lineWidth=2;
+    g.beginPath(); g.moveTo(0,oy); g.lineTo(W,oy); g.stroke();
+    g.strokeStyle='#1a2434'; g.lineWidth=1;
+    for(let x=-20;x<W;x+=22){ g.beginPath(); g.moveTo(x,oy); g.lineTo(x-11,oy+11); g.stroke(); }
+
+    g.strokeStyle='#38bdf8'; g.lineWidth=2; g.beginPath();
+    st.trail.forEach(([x,y],i)=>{ const px=X(x),py=Y(y); i?g.lineTo(px,py):g.moveTo(px,py); });
+    g.stroke();
+
+    const px=X(st.x), py=Y(st.y);
+    const vxN=vx, vyN=vy0-G*st.t;
+    const sp=Math.hypot(vxN,vyN)||1;
+    arrow(g,px,py,px+vxN/sp*56,py-vyN/sp*56,'#facc15',2,9);
+
+    const grd=g.createRadialGradient(px-3,py-3,2,px,py,12);
+    grd.addColorStop(0,'#fdba74'); grd.addColorStop(1,'#f97316');
+    g.fillStyle=grd; g.beginPath(); g.arc(px,py,9,0,TAU); g.fill();
+
+    txt(g,`射程 R = ${R.toFixed(1)} m`,padL,26,'#93c5fd',14);
+    txt(g,`最大高度 = ${Hm.toFixed(1)} m`,padL,48,'#93c5fd',14);
+    txt(g,`t = ${st.t.toFixed(2)} s`,padL,70,'#94a3b8',13);
+    txt(g,`v₀ = ${v0} m/s   θ = ${p.ang.val}°`,W-padR,26,'#64748b',13,'right');
+  }
+});
+
+/* ---------- 2. 单摆 ---------- */
+EX.push({
+  id:'pend', name:'单摆', cat:'经典力学',
+  hist:'伽利略在比萨大教堂观察到吊灯摆动后，发现摆的周期与振幅无关（等时性）。1656 年惠更斯利用单摆制成了第一台摆钟，使计时精度提高到每天误差仅数秒。',
+  formulas:['运动方程：θ″ = −(g/L)·sinθ','小角度周期：T = 2π√(L/g)','能量：E = ½mL²θ′² + mgL(1−cosθ)'],
+  knowledge:'单摆在重力分量 mg·sinθ 的作用下绕悬点转动。小角度时 sinθ ≈ θ，方程变为简谐振动，周期只与摆长 L 和重力加速度 g 有关，与摆球质量和振幅无关——这正是摆钟的原理。大角度摆动时周期会略微变长，称为"振幅的非线性效应"。',
+  params:{
+    L:{label:'摆长 L', min:0.4, max:3, step:0.05, val:1.5},
+    g:{label:'重力 g', min:1, max:25, step:0.1, val:9.8},
+    a0:{label:'初始角 θ₀', min:5, max:80, step:1, val:35},
+    damp:{label:'阻尼', min:0, max:0.4, step:0.01, val:0}
+  },
+  reset(st,p){ st.th=p.a0.val*Math.PI/180; st.w=0; st.t=0; },
+  update(st,p,dt){
+    const n=6, h=dt/n;
+    for(let i=0;i<n;i++){
+      const acc = -(p.g.val/p.L.val)*Math.sin(st.th) - p.damp.val*st.w;
+      st.w += acc*h; st.th += st.w*h;
+    }
+    st.t += dt;
+  },
+  draw(g,st,p,W,H){
+    bg(g,W,H); grid(g,W,H,50);
+    const ax=W/2, ay=H*0.13;
+    const scale=(H*0.7)/3;
+    const L=p.L.val*scale;
+    const bx=ax+L*Math.sin(st.th), by=ay+L*Math.cos(st.th);
+
+    g.strokeStyle='#334155'; g.setLineDash([6,6]); g.lineWidth=1;
+    g.beginPath(); g.moveTo(ax,ay); g.lineTo(ax,ay+L+40); g.stroke();
+    g.setLineDash([]);
+
+    g.fillStyle='#475569'; g.beginPath(); g.arc(ax,ay,7,0,TAU); g.fill();
+
+    g.strokeStyle='#94a3b8'; g.lineWidth=2.5;
+    g.beginPath(); g.moveTo(ax,ay); g.lineTo(bx,by); g.stroke();
+
+    const grd=g.createRadialGradient(bx-4,by-4,2,bx,by,16);
+    grd.addColorStop(0,'#fde68a'); grd.addColorStop(1,'#d97706');
+    g.fillStyle=grd; g.beginPath(); g.arc(bx,by,14,0,TAU); g.fill();
+
+    g.strokeStyle='#3b82f6'; g.lineWidth=2;
+    g.beginPath(); g.arc(ax,ay,60,Math.PI/2,Math.PI/2+st.th,st.th<0); g.stroke();
+
+    const T=TAU*Math.sqrt(p.L.val/p.g.val);
+    txt(g,`理论周期 T = 2π√(L/g) = ${T.toFixed(2)} s`,20,28,'#93c5fd',14);
+    txt(g,`当前摆角 θ = ${(st.th*180/Math.PI).toFixed(1)}°`,20,52,'#94a3b8',13);
+    txt(g,`角速度 ω = ${st.w.toFixed(2)} rad/s`,20,74,'#94a3b8',13);
+  }
+});
+
+/* ---------- 3. 弹簧振子 ---------- */
+EX.push({
+  id:'spring', name:'弹簧振子', cat:'经典力学',
+  hist:'胡克于 1678 年发表"胡克定律"：弹簧的弹力与形变量成正比。此后牛顿第二定律与胡克定律结合，导出了简谐振动的完整数学描述，成为波动学与量子力学的基础模型。',
+  formulas:['胡克定律：F = −kx','牛顿第二定律：ma = −kx − cv','角频率：ω = √(k/m)','周期：T = 2π√(m/k)'],
+  knowledge:'弹簧振子是最典型的简谐振动模型。回复力始终指向平衡位置且与位移成正比，因此加速度也正比于位移。振动的周期由系统本身的性质（k 与 m）决定，称为固有周期。加入阻尼后振幅按指数衰减，能量逐渐转化为热能。',
+  params:{
+    k:{label:'劲度系数 k', min:5, max:120, step:1, val:40},
+    m:{label:'质量 m', min:0.5, max:8, step:0.1, val:2},
+    damp:{label:'阻尼 c', min:0, max:6, step:0.1, val:0.4},
+    A:{label:'初始位移', min:0.2, max:1.5, step:0.05, val:1}
+  },
+  reset(st,p){ st.x=p.A.val; st.v=0; st.t=0; st.hist=[]; },
+  update(st,p,dt){
+    const n=6,h=dt/n;
+    for(let i=0;i<n;i++){
+      const a=-(p.k.val/p.m.val)*st.x - (p.damp.val/p.m.val)*st.v;
+      st.v+=a*h; st.x+=st.v*h;
+    }
+    st.t+=dt;
+    st.hist.push(st.x);
+    if(st.hist.length>Math.round(W_H/3)) st.hist.shift();
+  },
+  draw(g,st,p,W,H){
+    bg(g,W,H); grid(g,W,H,50);
+    const cy=H*0.45, wallX=W*0.1;
+    const restX=W*0.56, scale=Math.min(W*0.18,140);
+    const mx=restX+st.x*scale;
+
+    g.fillStyle='#334155'; g.fillRect(wallX-10,cy-70,10,140);
+
+    // 弹簧
+    const coils=16, x1=wallX, x2=mx-30;
+    g.strokeStyle='#94a3b8'; g.lineWidth=2; g.beginPath(); g.moveTo(x1,cy);
+    for(let i=0;i<=coils;i++){
+      const t=i/coils, px=x1+(x2-x1)*t;
+      const py=cy+Math.sin(t*TAU*coils)*16;
+      g.lineTo(px,py);
+    }
+    g.lineTo(x2,cy); g.stroke();
+
+    // 物块
+    const bw=60,bh=60;
+    g.fillStyle='#1d4ed8'; g.strokeStyle='#60a5fa'; g.lineWidth=2;
+    g.beginPath(); g.roundRect(mx,cy-bh/2,bw,bh,8); g.fill(); g.stroke();
+    txt(g,'m',mx+bw/2,cy,'#dbeafe',18,'center');
+
+    // 平衡位置
+    g.strokeStyle='#475569'; g.setLineDash([5,5]); g.lineWidth=1;
+    g.beginPath(); g.moveTo(restX+30,cy-80); g.lineTo(restX+30,cy+80); g.stroke();
+    g.setLineDash([]);
+
+    // 位移标注
+    arrow(g,restX+30,cy+70,mx+30,cy+70,'#f59e0b',2,7);
+    txt(g,`x = ${st.x.toFixed(2)} m`,(restX+mx)/2+30,cy+90,'#f59e0b',12,'center');
+
+    const T=TAU*Math.sqrt(p.m.val/p.k.val);
+    txt(g,`ω = √(k/m) = ${Math.sqrt(p.k.val/p.m.val).toFixed(2)} rad/s`,20,28,'#93c5fd',14);
+    txt(g,`T = 2π√(m/k) = ${T.toFixed(2)} s`,20,52,'#93c5fd',14);
+    txt(g,`v = ${st.v.toFixed(2)} m/s`,20,76,'#94a3b8',13);
+
+    // 位移曲线
+    const gx=W*0.55, gy=H*0.72, gw=W*0.4, gh=H*0.2;
+    g.strokeStyle='#1e293b'; g.lineWidth=1;
+    g.strokeRect(gx,gy-gh/2,gw,gh);
+    g.beginPath();
+    st.hist.forEach((v,i)=>{
+      const px=gx+ (i/st.hist.length)*gw;
+      const py=gy - clamp(v/1.6,-1,1)*gh/2;
+      i?g.lineTo(px,py):g.moveTo(px,py);
+    });
+    g.strokeStyle='#38bdf8'; g.lineWidth=2; g.stroke();
+    txt(g,'位移—时间图像',gx,gy-gh/2-12,'#64748b',12);
+  }
+});
+let W_H = 600;
+
+/* ---------- 4. 斜面摩擦 ---------- */
+EX.push({
+  id:'incline', name:'斜面与摩擦力', cat:'经典力学',
+  hist:'达·芬奇最早记录了摩擦现象；库仑在 1781 年通过大量实验确立了滑动摩擦力与正压力成正比的规律，即 f = μN，奠定了工程力学的基础。',
+  formulas:['沿斜面方向：ma = mg·sinθ − f','正压力：N = mg·cosθ','最大静摩擦：f_max = μN','下滑条件：tanθ > μ'],
+  knowledge:'物体放在斜面上时，重力可分解为沿斜面向下的 mg·sinθ 和垂直斜面的 mg·cosθ。摩擦力方向始终沿斜面阻碍相对滑动，其最大值由 μN 决定。当斜面倾角的正切值超过摩擦因数时，物体才会开始下滑——这就是"摩擦角"概念。',
+  params:{
+    ang:{label:'斜面倾角 θ', min:5, max:60, step:1, val:25},
+    mu:{label:'摩擦因数 μ', min:0, max:1, step:0.01, val:0.25},
+    m:{label:'质量 m', min:1, max:10, step:0.5, val:3},
+    g:{label:'重力 g', min:1, max:25, step:0.1, val:9.8}
+  },
+  reset(st,p){ st.s=0; st.v=0; },
+  update(st,p,dt){
+    const th=p.ang.val*Math.PI/180, G=p.g.val;
+    let a = G*(Math.sin(th) - p.mu.val*Math.cos(th));
+    if(a<=0){ a=0; st.v=0; }
+    st.v += a*dt;
+    st.s += st.v*dt;
+    if(st.s>1){ st.s=1; st.v=0; }
+  },
+  draw(g,st,p,W,H){
+    bg(g,W,H); grid(g,W,H,50);
+    const th=p.ang.val*Math.PI/180;
+    let base=Math.min(W*0.6,560), h=base*Math.tan(th);
+    const maxH=H*0.6;
+    if(h>maxH){ h=maxH; base=h/Math.tan(th); }
+    const x0=W*0.16, y0=H*0.82;
+    const topL={x:x0,y:y0-h}, botR={x:x0+base,y:y0};
+
+    g.fillStyle='#16233a'; g.strokeStyle='#3b82f6'; g.lineWidth=2;
+    g.beginPath(); g.moveTo(x0,y0); g.lineTo(botR.x,y0); g.lineTo(topL.x,topL.y); g.closePath();
+    g.fill(); g.stroke();
+
+    const Ls=Math.hypot(base,h);
+    const t=clamp(st.s,0,1);
+    const bx=topL.x+(botR.x-topL.x)*t;
+    const by=topL.y+(botR.y-topL.y)*t;
+
+    // 物块
+    g.save();
+    g.translate(bx,by);
+    g.rotate(th);
+    g.fillStyle='#f59e0b'; g.strokeStyle='#fbbf24'; g.lineWidth=2;
+    g.beginPath(); g.roundRect(-22,-38,44,38,5); g.fill(); g.stroke();
+    g.restore();
+
+    // 力箭头
+    const cx=bx, cy=by-19;
+    const G=p.g.val*p.m.val;
+    const aLen = 70;
+    arrow(g,cx,cy,cx,cy+aLen,'#ef4444',2.5,9);           // 重力
+    arrow(g,cx,cy,cx+Math.cos(th)*70,cy-Math.sin(th)*70,'#22c55e',2.5,9); // 支持力
+    if(st.v>0.01) arrow(g,cx,cy,cx-Math.cos(th)*50,cy+Math.sin(th)*50,'#a855f7',2.5,9);
+
+    const a = p.g.val*(Math.sin(th)-p.mu.val*Math.cos(th));
+    txt(g,`沿斜面加速度 a = ${Math.max(a,0).toFixed(2)} m/s²`,20,28,'#93c5fd',14);
+    txt(g,`速度 v = ${st.v.toFixed(2)} m/s`,20,52,'#94a3b8',13);
+    txt(g,`tanθ = ${Math.tan(th).toFixed(2)}   μ = ${p.mu.val.toFixed(2)}`,20,76,'#94a3b8',13);
+    txt(g, Math.tan(th)>p.mu.val?'→ 下滑中':'→ 静止（摩擦力足够大）',20,100, Math.tan(th)>p.mu.val?'#f59e0b':'#22c55e',13);
+
+    txt(g,'红:重力 绿:支持力 紫:摩擦力',W-20,26,'#475569',12,'right');
+  }
+});
+
+/* ---------- 5. 碰撞 ---------- */
+EX.push({
+  id:'collide', name:'一维碰撞', cat:'经典力学',
+  hist:'笛卡尔与惠更斯在 17 世纪研究了碰撞问题。惠更斯首次指出：完全弹性碰撞中"相对速度大小不变"；牛顿则把它总结为动量守恒定律，成为物理学的基石之一。',
+  formulas:['动量守恒：m₁v₁ + m₂v₂ = m₁v₁′ + m₂v₂′','恢复系数：e = −(v₂′−v₁′)/(v₂−v₁)','v₁′ = [(m₁−em₂)v₁ + (1+e)m₂v₂]/(m₁+m₂)','v₂′ = [(m₂−em₁)v₂ + (1+e)m₁v₁]/(m₁+m₂)'],
+  knowledge:'碰撞过程时间极短，外力冲量可以忽略，因此总动量守恒。但机械能不一定守恒：e=1 时是完全弹性碰撞，动能守恒；e=0 时是完全非弹性碰撞，两物体粘在一起，动能损失最大；0<e<1 时是真实物体常见的非弹性碰撞。',
+  params:{
+    m1:{label:'m₁ 质量', min:0.5, max:8, step:0.1, val:2},
+    m2:{label:'m₂ 质量', min:0.5, max:8, step:0.1, val:3},
+    v1:{label:'v₁ 初速度', min:-6, max:6, step:0.2, val:3},
+    v2:{label:'v₂ 初速度', min:-6, max:6, step:0.2, val:-1},
+    e:{label:'恢复系数 e', min:0, max:1, step:0.05, val:0.8}
+  },
+  reset(st,p){
+    st.x1=2.5; st.x2=7.5; st.v1=p.v1.val; st.v2=p.v2.val;
+    st.flash=0;
+  },
+  update(st,p,dt){
+    st.x1+=st.v1*dt; st.x2+=st.v2*dt;
+    const w1=0.5+p.m1.val*0.09, w2=0.5+p.m2.val*0.09;
+    const gap=(st.x2-st.x1)-(w1+w2)/2;
+    if(gap<0 && st.v1>st.v2){
+      const m1=p.m1.val,m2=p.m2.val,e=p.e.val;
+      const u1=st.v1,u2=st.v2;
+      st.v1=((m1-e*m2)*u1+(1+e)*m2*u2)/(m1+m2);
+      st.v2=((m2-e*m1)*u2+(1+e)*m1*u1)/(m1+m2);
+      st.x1 = st.x2-(w1+w2)/2-0.001;
+      st.flash=0.35;
+    }
+    if(st.flash>0) st.flash-=dt;
+    if(st.x1<0.6){ st.x1=0.6; st.v1=Math.abs(st.v1); }
+    if(st.x2>9.4){ st.x2=9.4; st.v2=-Math.abs(st.v2); }
+    if(st.x1>9.4){ st.x1=9.4; st.v1=-Math.abs(st.v1); }
+    if(st.x2<0.6){ st.x2=0.6; st.v2=Math.abs(st.v2); }
+  },
+  draw(g,st,p,W,H){
+    bg(g,W,H);
+    const gy=H*0.62, sc=W/10;
+    g.strokeStyle='#334155'; g.lineWidth=2;
+    g.beginPath(); g.moveTo(0,gy); g.lineTo(W,gy); g.stroke();
+
+    const w1=0.5+p.m1.val*0.09, w2=0.5+p.m2.val*0.09;
+    const c1=st.x1*sc, c2=st.x2*sc;
+    const s1=w1*sc, s2=w2*sc;
+
+    g.fillStyle='#1d4ed8'; g.strokeStyle='#60a5fa'; g.lineWidth=2;
+    g.beginPath(); g.roundRect(c1-s1/2,gy-70,s1,70,6); g.fill(); g.stroke();
+    txt(g,`m₁=${p.m1.val.toFixed(1)}`,c1,gy-35,'#dbeafe',13,'center');
+
+    g.fillStyle='#b45309'; g.strokeStyle='#fbbf24'; g.lineWidth=2;
+    g.beginPath(); g.roundRect(c2-s2/2,gy-70,s2,70,6); g.fill(); g.stroke();
+    txt(g,`m₂=${p.m2.val.toFixed(1)}`,c2,gy-35,'#fef3c7',13,'center');
+
+    // 速度箭头
+    const av=(x,y,v)=>{
+      if(Math.abs(v)<0.05) return;
+      const len=Math.min(90,Math.abs(v)*22);
+      arrow(g,x,y,x+Math.sign(v)*len,y,v>0?'#22c55e':'#ef4444',3,10);
+    };
+    av(c1,gy-100,st.v1);
+    av(c2,gy-100,st.v2);
+
+    if(st.flash>0){
+      g.fillStyle=`rgba(255,220,100,${st.flash*1.6})`;
+      g.beginPath(); g.arc((c1+c2)/2,gy-45,34,0,TAU); g.fill();
+    }
+
+    const p1=p.m1.val*st.v1, p2=p.m2.val*st.v2;
+    const E=0.5*p.m1.val*st.v1*st.v1+0.5*p.m2.val*st.v2*st.v2;
+    txt(g,`总动量 p = ${(p1+p2).toFixed(2)} kg·m/s`,20,28,'#93c5fd',14);
+    txt(g,`总动能 E = ${E.toFixed(2)} J`,20,52,'#93c5fd',14);
+    txt(g,`v₁ = ${st.v1.toFixed(2)} m/s   v₂ = ${st.v2.toFixed(2)} m/s`,20,76,'#94a3b8',13);
+    txt(g, p.e.val>0.98?'完全弹性碰撞':(p.e.val<0.02?'完全非弹性碰撞':'非弹性碰撞'),W-20,26,'#f59e0b',13,'right');
+  }
+});
+
+/* ---------- 6. 万有引力轨道 ---------- */
+EX.push({
+  id:'orbit', name:'万有引力与轨道', cat:'经典力学',
+  hist:'第谷·布拉赫留下精确的火星观测数据，开普勒于 1609—1619 年从中总结出行星运动三大定律。牛顿在 1687 年用万有引力定律统一解释了这一切：椭圆轨道正是平方反比力场的必然结果。',
+  formulas:['万有引力：F = GMm/r²','圆轨道速度：v = √(GM/r)','开普勒第三定律：T² ∝ a³','轨道能量：E = ½mv² − GMm/r'],
+  knowledge:'当中心天体的引力提供向心力时，行星沿椭圆（或圆）轨道运行，中心天体位于椭圆的一个焦点上。速度恰好等于圆轨道速度时轨迹为圆；速度偏小则近地点靠近、远地点远离；速度超过逃逸速度 √(2GM/r) 时，轨道变为抛物线或双曲线，天体一去不返。',
+  params:{
+    GM:{label:'中心质量 GM', min:100, max:1600, step:20, val:600},
+    r0:{label:'初始距离 r₀', min:0.5, max:1.8, step:0.05, val:1.0},
+    vf:{label:'速度 / 圆速度', min:0.5, max:1.6, step:0.02, val:1.0}
+  },
+  reset(st,p){
+    st.x=p.r0.val; st.y=0;
+    const vc=Math.sqrt(p.GM.val/p.r0.val);
+    st.vx=0; st.vy=vc*p.vf.val;
+    st.trail=[]; st.t=0;
+  },
+  update(st,p,dt){
+    const n=8, h=dt/n;
+    for(let i=0;i<n;i++){
+      const r2=st.x*st.x+st.y*st.y;
+      const r=Math.sqrt(r2)||1e-6;
+      const a=-p.GM.val/(r2*r);
+      st.vx+=a*st.x*h;
+      st.vy+=a*st.y*h;
+      st.x+=st.vx*h;
+      st.y+=st.vy*h;
+    }
+    st.t+=dt;
+    st.trail.push([st.x,st.y]);
+    if(st.trail.length>4000) st.trail.shift();
+  },
+  draw(g,st,p,W,H){
+    bg(g,W,H);
+    const cx=W/2, cy=H/2;
+    const sc=Math.min(W,H)*0.34/Math.max(p.r0.val,0.6);
+    const X=x=>cx+x*sc, Y=y=>cy-y*sc;
+
+    g.strokeStyle='#1e293b'; g.lineWidth=1;
+    for(let r=0.5;r<=2.5;r+=0.5){
+      g.beginPath(); g.arc(cx,cy,r*sc,0,TAU); g.stroke();
+    }
+
+    g.strokeStyle='rgba(56,189,248,0.55)'; g.lineWidth=2; g.beginPath();
+    st.trail.forEach(([x,y],i)=>{ const px=X(x),py=Y(y); i?g.lineTo(px,py):g.moveTo(px,py); });
+    g.stroke();
+
+    const sg=g.createRadialGradient(cx,cy,2,cx,cy,26);
+    sg.addColorStop(0,'#fef08a'); sg.addColorStop(1,'#f59e0b');
+    g.fillStyle=sg; g.beginPath(); g.arc(cx,cy,22,0,TAU); g.fill();
+
+    const px=X(st.x), py=Y(st.y);
+    g.fillStyle='#38bdf8'; g.beginPath(); g.arc(px,py,9,0,TAU); g.fill();
+
+    const v=Math.hypot(st.vx,st.vy);
+    arrow(g,px,py,px+st.vx/v*46,py-st.vy/v*46,'#22c55e',2,8);
+
+    const vc=Math.sqrt(p.GM.val/p.r0.val);
+    const vesc=Math.sqrt(2*p.GM.val/p.r0.val);
+    txt(g,`当前速度 v = ${v.toFixed(1)}`,20,28,'#93c5fd',14);
+    txt(g,`圆轨道速度 = ${vc.toFixed(1)}   逃逸速度 = ${vesc.toFixed(1)}`,20,52,'#94a3b8',13);
+    let type='椭圆轨道';
+    if(Math.abs(p.vf.val-1)<0.02) type='圆轨道';
+    else if(v>=vesc) type='逃逸（双曲线）';
+    else if(p.vf.val<1) type='椭圆（近地点靠近）';
+    txt(g,type,W-20,26,'#f59e0b',14,'right');
+  }
+});
+
+/* ---------- 7. 电场线 ---------- */
+EX.push({
+  id:'efield', name:'电场与电场线', cat:'电磁学',
+  hist:'法拉第在 1830 年代提出"力线"的直观图像，虽然没有接受过正规数学训练，却用场线的疏密描述电场强弱。麦克斯韦后来将这些图像数学化，建立了电磁场理论。',
+  formulas:['库仑定律：F = kq₁q₂/r²','点电荷场强：E = kq/r²','场强定义：E = F/q₀','电场线密度 ∝ 场强大小'],
+  knowledge:'电场线从正电荷出发、终止于负电荷（或延伸到无穷远），任意两条电场线不相交。电场线的疏密程度表示场强大小——线越密，场越强。电场线的切线方向就是该点电场强度的方向。',
+  params:{
+    q1:{label:'电荷 q₁', min:-5, max:5, step:0.5, val:2},
+    q2:{label:'电荷 q₂', min:-5, max:5, step:0.5, val:-2},
+    d:{label:'间距 d', min:60, max:340, step:10, val:180}
+  },
+  reset(st,p){ st.t=0; },
+  update(st,p,dt){ st.t+=dt; },
+  draw(g,st,p,W,H){
+    bg(g,W,H,'#070b14');
+    const cy=H/2, cx=W/2, d=p.d.val;
+    const charges=[
+      {x:cx-d/2,y:cy,q:p.q1.val},
+      {x:cx+d/2,y:cy,q:p.q2.val}
+    ];
+    const field=(x,y)=>{
+      let ex=0,ey=0;
+      for(const c of charges){
+        const dx=x-c.x, dy=y-c.y;
+        const r2=dx*dx+dy*dy;
+        if(r2<36) continue;
+        const r=Math.sqrt(r2);
+        ex+=c.q*dx/(r2*r); ey+=c.q*dy/(r2*r);
+      }
+      return [ex,ey];
+    };
+
+    g.lineWidth=1.2;
+    for(const c of charges){
+      if(Math.abs(c.q)<0.1) continue;
+      const N=Math.round(8+Math.abs(c.q)*3);
+      const dirSign=c.q>0?1:-1;
+      for(let i=0;i<N;i++){
+        const a=i*TAU/N+0.15;
+        let x=c.x+Math.cos(a)*12, y=c.y+Math.sin(a)*12;
+        g.strokeStyle=c.q>0?'rgba(248,113,113,0.5)':'rgba(96,165,250,0.5)';
+        g.beginPath(); g.moveTo(x,y);
+        for(let s=0;s<900;s++){
+          const [ex,ey]=field(x,y);
+          const m=Math.hypot(ex,ey);
+          if(m<1e-9) break;
+          x+=dirSign*ex/m*3; y+=dirSign*ey/m*3;
+          if(x<-40||x>W+40||y<-40||y>H+40) break;
+          let hit=false;
+          for(const c2 of charges){ if(Math.hypot(x-c2.x,y-c2.y)<10){ hit=true; break; } }
+          g.lineTo(x,y);
+          if(hit) break;
+        }
+        g.stroke();
+      }
+    }
+
+    for(const c of charges){
+      const isPos=c.q>0;
+      const col=isPos?'#ef4444':'#3b82f6';
+      g.fillStyle=col; g.beginPath(); g.arc(c.x,c.y,18,0,TAU); g.fill();
+      g.strokeStyle='#fff'; g.lineWidth=3;
+      g.beginPath(); g.moveTo(c.x-8,c.y); g.lineTo(c.x+8,c.y); g.stroke();
+      if(isPos){ g.beginPath(); g.moveTo(c.x,c.y-8); g.lineTo(c.x,c.y+8); g.stroke(); }
+      txt(g,`q=${c.q}`,c.x,c.y+34,'#94a3b8',12,'center');
+    }
+    txt(g,'电场线从正电荷发出，终止于负电荷',20,26,'#64748b',13);
+  }
+});
+
+/* ---------- 8. 电路 ---------- */
+EX.push({
+  id:'circuit', name:'欧姆定律与电路', cat:'电磁学',
+  hist:'欧姆在 1827 年发表《伽伐尼电路的数学研究》，提出电流与电压成正比、与电阻成反比的规律。当时因缺乏精确测量手段遭到质疑，直到 1841 年英国皇家学会授予他科普利奖章。',
+  formulas:['欧姆定律：I = U / R','串联：R = R₁ + R₂，I 相同','并联：1/R = 1/R₁ + 1/R₂，U 相同','电功率：P = UI = I²R = U²/R'],
+  knowledge:'电压是推动电荷定向移动的"动力"，电阻是导体对电流的阻碍。串联电路中电流处处相等，总电压等于各部分电压之和；并联电路中各支路电压相等，总电流等于各支路电流之和。无论怎样连接，能量都是守恒的，电源提供的总功率等于各元件消耗的功率之和。',
+  params:{
+    U:{label:'电源电压 U', min:1, max:24, step:0.5, val:12},
+    R1:{label:'电阻 R₁', min:1, max:100, step:1, val:20},
+    R2:{label:'电阻 R₂', min:1, max:100, step:1, val:30},
+    mode:{label:'连接方式', type:'select', options:['串联','并联'], val:0}
+  },
+  reset(st,p){ st.t=0; },
+  update(st,p,dt){ st.t+=dt; },
+  draw(g,st,p,W,H){
+    bg(g,W,H);
+    const U=p.U.val,R1=p.R1.val,R2=p.R2.val;
+    const par=p.mode.val===1;
+    const R=par?(R1*R2)/(R1+R2):R1+R2;
+    const I=U/R;
+
+    const x0=W*0.18,x1=W*0.82,y0=H*0.30,y1=H*0.72;
+    const midY=(y0+y1)/2;
+
+    g.strokeStyle='#64748b'; g.lineWidth=3; g.lineCap='round';
+
+    // 电池
+    const bat=(x,y)=>{
+      g.strokeStyle='#fbbf24'; g.lineWidth=3;
+      g.beginPath(); g.moveTo(x,y-22); g.lineTo(x,y+22); g.stroke();
+      g.lineWidth=2; g.strokeStyle='#fde68a';
+      g.beginPath(); g.moveTo(x-14,y-12); g.lineTo(x-14,y+12); g.stroke();
+      g.lineWidth=5;
+      g.beginPath(); g.moveTo(x+2,y-20); g.lineTo(x+2,y+20); g.stroke();
+    };
+
+    const resH=(cx,cy,val,label,cur)=>{
+      const w=Math.min(90,50+val*0.4), h=26;
+      g.fillStyle='#1e293b'; g.strokeStyle='#38bdf8'; g.lineWidth=2;
+      g.beginPath(); g.roundRect(cx-w/2,cy-h/2,w,h,5); g.fill(); g.stroke();
+      txt(g,label,cx,cy,'#a5d8ff',12,'center');
+      txt(g,`${val}Ω`,cx,cy-24,'#64748b',11,'center');
+      txt(g,`${cur.toFixed(2)}A`,cx,cy+24,'#22c55e',11,'center');
+    };
+    const resV=(cx,cy,val,label,cur)=>{
+      const w=26,h=Math.min(90,50+val*0.4);
+      g.fillStyle='#1e293b'; g.strokeStyle='#38bdf8'; g.lineWidth=2;
+      g.beginPath(); g.roundRect(cx-w/2,cy-h/2,w,h,5); g.fill(); g.stroke();
+      txt(g,label,cx,cy,'#a5d8ff',12,'center');
+      txt(g,`${val}Ω`,cx+34,cy-10,'#64748b',11,'left');
+      txt(g,`${cur.toFixed(2)}A`,cx+34,cy+10,'#22c55e',11,'left');
+    };
+
+    if(!par){
+      g.strokeStyle='#64748b'; g.lineWidth=3;
+      g.beginPath();
+      g.moveTo(x0,y0); g.lineTo(x1,y0); g.lineTo(x1,y1); g.lineTo(x0,y1); g.closePath();
+      g.stroke();
+      bat(x0,midY);
+      resH(W*0.40,y0,R1,'R₁',I);
+      resH(W*0.66,y0,R2,'R₂',I);
+    } else {
+      const xm=W*0.56;
+      g.strokeStyle='#64748b'; g.lineWidth=3;
+      g.beginPath();
+      g.moveTo(x0,y0); g.lineTo(x1,y0);
+      g.moveTo(x0,y1); g.lineTo(x1,y1);
+      g.moveTo(x1,y0); g.lineTo(x1,y1);
+      g.moveTo(xm,y0); g.lineTo(xm,y1);
+      g.stroke();
+      bat(x0,midY);
+      resV(xm,midY,R1,'R₁',U/R1);
+      resV(x1,midY,R2,'R₂',U/R2);
+    }
+
+    txt(g,`总电阻 R = ${R.toFixed(2)} Ω`,20,28,'#93c5fd',14);
+    txt(g,`总电流 I = ${I.toFixed(2)} A`,20,52,'#93c5fd',14);
+    txt(g,`总功率 P = ${(U*I).toFixed(1)} W`,20,76,'#93c5fd',14);
+    txt(g, par?'并联电路：各支路电压相同':'串联电路：各处电流相同', W-20,26,'#f59e0b',13,'right');
+  }
+});
+
+/* ---------- 9. 洛伦兹力 ---------- */
+EX.push({
+  id:'lorentz', name:'带电粒子在磁场中', cat:'电磁学',
+  hist:'洛伦兹在 1892 年提出运动电荷在磁场中受力的公式。1897 年汤姆孙利用带电粒子在磁场中的偏转发现了电子，这一实验成为粒子物理学的开端。回旋加速器、质谱仪都基于此原理。',
+  formulas:['洛伦兹力：F = qv × B','力大小：F = qvB·sinθ','圆周半径：r = mv / (qB)','周期：T = 2πm / (qB)'],
+  knowledge:'当带电粒子的速度垂直于匀强磁场时，洛伦兹力始终垂直于速度方向，只改变速度方向而不做功，因此粒子做匀速圆周运动。半径与速度成正比、与磁场强度成反比。回旋周期只与比荷 m/q 和磁感应强度 B 有关，与速度无关——这正是回旋加速器能工作的关键。',
+  params:{
+    B:{label:'磁感应强度 B', min:0.3, max:4, step:0.1, val:1.2},
+    v:{label:'速度 v', min:1, max:10, step:0.5, val:5},
+    sign:{label:'电荷符号', type:'select', options:['正电荷 +q','负电荷 −q'], val:0}
+  },
+  reset(st,p){ st.th=0; st.t=0; },
+  update(st,p,dt){ st.t+=dt; },
+  draw(g,st,p,W,H){
+    bg(g,W,H,'#070b14');
+    const B=p.B.val, v=p.v.val;
+    const q=p.sign.val===0?1:-1;
+    const r=clamp(v/B*46, 30, Math.min(W,H)*0.4);
+    const cx=W/2, cy=H/2;
+
+    // 磁场符号（向里）
+    g.strokeStyle='rgba(96,165,250,0.22)'; g.lineWidth=1.5;
+    const step=52;
+    for(let x=step/2;x<W;x+=step){
+      for(let y=step/2;y<H;y+=step){
+        g.beginPath(); g.arc(x,y,4,0,TAU); g.stroke();
+        g.beginPath(); g.moveTo(x-7,y); g.lineTo(x+7,y); g.moveTo(x,y-7); g.lineTo(x,y+7); g.stroke();
+      }
+    }
+
+    // 轨道
+    g.strokeStyle='rgba(56,189,248,0.35)'; g.lineWidth=2;
+    g.beginPath(); g.arc(cx,cy,r,0,TAU); g.stroke();
+
+    const w=v/r*60;
+    const ang=st.t*w*q;
+    const px=cx+r*Math.cos(ang), py=cy+r*Math.sin(ang);
+
+    g.fillStyle=q>0?'#ef4444':'#3b82f6';
+    g.beginPath(); g.arc(px,py,10,0,TAU); g.fill();
+    txt(g,q>0?'+':'−',px,py,'#fff',14,'center');
+
+    // 速度方向（切向）
+    const tvx=-Math.sin(ang)*q, tvy=Math.cos(ang)*q;
+    arrow(g,px,py,px+tvx*54,py+tvy*54,'#22c55e',2.5,9);
+    // 洛伦兹力（指向圆心）
+    const fx=cx-px, fy=cy-py;
+    const fm=Math.hypot(fx,fy)||1;
+    arrow(g,px,py,px+fx/fm*46,py+fy/fm*46,'#f59e0b',2.5,9);
+
+    txt(g,`轨道半径 r = mv/(qB) = ${(r/46*v/ (v/B*46)*0+v/B).toFixed(2)} (单位)`,20,28,'#93c5fd',14);
+    txt(g,`r ∝ v/B  →  r = ${(v/B).toFixed(2)}`,20,52,'#93c5fd',14);
+    txt(g,`周期 T = 2πm/(qB) 与速度无关`,20,76,'#94a3b8',13);
+    txt(g,'绿:速度  黄:洛伦兹力  蓝点:磁场指向纸内',W-20,H-20,'#475569',12,'right');
+  }
+});
+
+/* ---------- 10. 理想气体 ---------- */
+EX.push({
+  id:'gas', name:'理想气体分子运动', cat:'热学',
+  hist:'1827 年布朗观察到花粉颗粒的无规则运动。1905 年爱因斯坦用分子运动论解释了布朗运动，1908 年佩兰的实验证实了原子的真实存在，为分子运动论提供了决定性证据。',
+  formulas:['理想气体状态方程：PV = nRT','压强微观解释：P = (1/3)ρ·v̄²','平均平动动能：Ē = (3/2)kT','方均根速率：v_rms = √(3kT/m)'],
+  knowledge:'气体压强来源于大量分子对容器壁的持续碰撞。温度升高时分子平均速率增大，碰撞更频繁、更剧烈，压强随之增大；体积减小时单位时间内碰撞壁面的分子数增加，压强也会增大。分子速率的分布服从麦克斯韦—玻尔兹曼分布。',
+  params:{
+    T:{label:'温度 T', min:100, max:1000, step:10, val:300},
+    N:{label:'分子数 N', min:20, max:200, step:10, val:90},
+    V:{label:'体积 V', min:0.5, max:1.3, step:0.05, val:1.0}
+  },
+  reset(st,p){
+    st.ps=[];
+    for(let i=0;i<200;i++){
+      st.ps.push({
+        x:Math.random(), y:Math.random(),
+        a:Math.random()*TAU
+      });
+    }
+  },
+  update(st,p,dt){
+    const speed=70*Math.sqrt(p.T.val/300);
+    for(let i=0;i<p.N.val;i++){
+      const q=st.ps[i];
+      q.x+=Math.cos(q.a)*speed*dt;
+      q.y+=Math.sin(q.a)*speed*dt;
+      if(q.x<0){q.x=0;q.a=Math.PI-q.a;}
+      if(q.x>1){q.x=1;q.a=Math.PI-q.a;}
+      if(q.y<0){q.y=0;q.a=-q.a;}
+      if(q.y>1){q.y=1;q.a=-q.a;}
+    }
+  },
+  draw(g,st,p,W,H){
+    bg(g,W,H,'#070b14');
+    const padX=W*0.14, padY=H*0.16;
+    const vw=W*0.42*p.V.val, vh=H*0.66;
+    const bx=padX, by=(H-vh)/2;
+
+    g.fillStyle='#0d1526'; g.strokeStyle='#3b82f6'; g.lineWidth=3;
+    g.beginPath(); g.roundRect(bx,by,vw,vh,8); g.fill(); g.stroke();
+
+    // 活塞
+    g.fillStyle='#334155';
+    g.fillRect(bx+vw,by,14,vh);
+
+    const speed=70*Math.sqrt(p.T.val/300);
+    for(let i=0;i<p.N.val;i++){
+      const q=st.ps[i];
+      const px=bx+q.x*vw, py=by+q.y*vh;
+      const hue=200-Math.min(160,(speed-40));
+      g.fillStyle=`hsl(${clamp(210-speed*0.9,10,210)},85%,62%)`;
+      g.beginPath(); g.arc(px,py,3,0,TAU); g.fill();
+    }
+
+    // 读数面板
+    const px0=W*0.66;
+    txt(g,'微观状态',px0,H*0.22,'#f59e0b',13);
+    txt(g,`分子数 N = ${p.N.val}`,px0,H*0.30,'#cbd5e1',13);
+    txt(g,`温度 T = ${p.T.val} K`,px0,H*0.38,'#cbd5e1',13);
+    txt(g,`体积 V = ${p.V.val.toFixed(2)} V₀`,px0,H*0.46,'#cbd5e1',13);
+    const Pval=p.N.val*p.T.val/(p.V.val*100);
+    txt(g,`相对压强 P ∝ NT/V = ${Pval.toFixed(1)}`,px0,H*0.54,'#38bdf8',14);
+    txt(g,`v_rms ∝ √T = ${Math.sqrt(p.T.val/300).toFixed(2)} v₀`,px0,H*0.62,'#22c55e',13);
+
+    // 速率指示条
+    const bw=W*0.26, bh=10;
+    const frac=clamp((p.T.val-100)/900,0,1);
+    g.fillStyle='#1e293b'; g.beginPath(); g.roundRect(px0,H*0.70,bw,bh,5); g.fill();
+    const grd=g.createLinearGradient(px0,0,px0+bw,0);
+    grd.addColorStop(0,'#3b82f6'); grd.addColorStop(1,'#ef4444');
+    g.fillStyle=grd; g.beginPath(); g.roundRect(px0,H*0.70,bw*frac,bh,5); g.fill();
+    txt(g,'分子平均速率',px0,H*0.70-12,'#64748b',11);
+
+    txt(g,'升高温度 → 分子运动加剧 → 压强增大',W/2,by+vh+28,'#475569',12,'center');
+  }
+});
+
+/* ---------- 11. 双缝干涉 ---------- */
+EX.push({
+  id:'slit', name:'双缝干涉', cat:'光学与波动',
+  hist:'1801 年托马斯·杨用双缝实验证明了光的波动性，与牛顿的微粒说分庭抗礼。1961 年约恩松用电子做双缝实验，观察到同样的干涉条纹，成为量子力学最深刻的实验之一。',
+  formulas:['光程差：Δ = d·sinθ','明纹条件：Δ = kλ (k = 0,±1,±2…)','暗纹条件：Δ = (k+½)λ','条纹间距：Δy = λL / d'],
+  knowledge:'两束相干光在空间相遇时，波峰与波峰叠加形成明纹，波峰与波谷叠加形成暗纹。条纹间距与波长成正比、与缝距成反比。这个实验最深刻地揭示了微观粒子的波粒二象性——单个电子一次只通过一条缝，但大量电子累积后仍出现干涉条纹。',
+  params:{
+    lam:{label:'波长 λ', min:400, max:700, step:10, val:550},
+    d:{label:'缝间距 d', min:20, max:140, step:5, val:60},
+    L:{label:'缝屏距离 L', min:120, max:320, step:10, val:220}
+  },
+  reset(st,p){ st.ph=0; st.cacheKey=''; },
+  update(st,p,dt){ st.ph+=dt*6; },
+  draw(g,st,p,W,H){
+    bg(g,W,H,'#05070d');
+
+    const RW=200, RH=Math.max(60,Math.round(200*H/W));
+    if(!st.buf){
+      st.buf=document.createElement('canvas');
+      st.buf.width=RW; st.buf.height=RH;
+      st.bctx=st.buf.getContext('2d');
+      st.img=st.bctx.createImageData(RW,RH);
+      st.r1=new Float32Array(RW*RH);
+      st.r2=new Float32Array(RW*RH);
+    }
+    if(st.buf.height!==RH){ st.buf.height=RH; st.img=st.bctx.createImageData(RW,RH); st.cacheKey=''; }
+
+    const sx=W*0.10, sy=H/2;
+    const dpx=p.d.val, Lpx=p.L.val;
+    const lamPx=p.lam.val/1000*20;
+
+    const key=`${dpx}|${RW}|${RH}|${W}|${H}`;
+    if(st.cacheKey!==key){
+      st.cacheKey=key;
+      const kx=RW/W, ky=RH/H;
+      const s1x=sx*kx, s1y=(sy-dpx/2)*ky;
+      const s2x=sx*kx, s2y=(sy+dpx/2)*ky;
+      let idx=0;
+      for(let j=0;j<RH;j++){
+        for(let i=0;i<RW;i++){
+          st.r1[idx]=Math.hypot(i-s1x,j-s1y);
+          st.r2[idx]=Math.hypot(i-s2x,j-s2y);
+          idx++;
+        }
+      }
+    }
+
+    const data=st.img.data;
+    const k=TAU/(lamPx*RW/W);
+    const ph=st.ph;
+    for(let i=0;i<RW*RH;i++){
+      const r1=st.r1[i], r2=st.r2[i];
+      const s1=1/Math.sqrt(r1+18), s2=1/Math.sqrt(r2+18);
+      const v=Math.sin(k*r1-ph)*s1+Math.sin(k*r2-ph)*s2;
+      const a=Math.min(1, Math.abs(v)*Math.abs(v)*18);
+      let R,G,B;
+      if(v>0){ R=255*a; G=140*a; B=60*a; }
+      else { R=50*a; G=150*a; B=255*a; }
+      const o=i*4;
+      data[o]=R; data[o+1]=G; data[o+2]=B; data[o+3]=255;
+    }
+    st.bctx.putImageData(st.img,0,0);
+
+    g.globalAlpha=0.92;
+    g.drawImage(st.buf,0,0,W,H);
+    g.globalAlpha=1;
+
+    // 挡板
+    g.fillStyle='#1e293b';
+    g.fillRect(sx-8,0,10,sy-dpx/2-4);
+    g.fillRect(sx-8,sy-dpx/2+4,10,dpx-8);
+    g.fillRect(sx-8,sy+dpx/2+4,10,H-sy-dpx/2);
+    g.fillStyle='#fbbf24';
+    g.beginPath(); g.arc(sx-3,sy-dpx/2,3.5,0,TAU); g.fill();
+    g.beginPath(); g.arc(sx-3,sy+dpx/2,3.5,0,TAU); g.fill();
+
+    const dy=lamPx*Lpx/dpx;
+    txt(g,`λ = ${p.lam.val} nm   d = ${dpx}   L = ${Lpx}`,W-20,26,'#94a3b8',13,'right');
+    txt(g,`条纹间距 Δy = λL/d ≈ ${(dy).toFixed(0)} (相对单位)`,W-20,50,'#38bdf8',13,'right');
+  }
+});
+
+/* ---------- 12. 光的折射 ---------- */
+EX.push({
+  id:'refract', name:'光的折射与全反射', cat:'光学与波动',
+  hist:'斯涅尔在 1621 年通过实验发现了折射定律但未发表，笛卡尔于 1637 年首次公布。费马则用"光走最短时间路径"的原理给出了理论解释，成为变分法的先声。',
+  formulas:['折射定律：n₁·sinθ₁ = n₂·sinθ₂','光速关系：v = c / n','临界角：sinθ_c = n₂ / n₁'],
+  knowledge:'光从光密介质射向光疏介质时，折射角大于入射角。当入射角增大到临界角时，折射角达到 90°，折射光沿界面掠出；超过临界角后，光全部反射回原介质，这就是全反射。光纤通信正是利用了全反射来"困住"光信号。',
+  params:{
+    n1:{label:'介质 1 折射率 n₁', min:1, max:2.5, step:0.05, val:1.5},
+    n2:{label:'介质 2 折射率 n₂', min:1, max:2.5, step:0.05, val:1.0},
+    ang:{label:'入射角 θ₁', min:0, max:89, step:1, val:40}
+  },
+  reset(st,p){ st.t=0; },
+  update(st,p,dt){ st.t+=dt; },
+  draw(g,st,p,W,H){
+    bg(g,W,H,'#05070d');
+    const n1=p.n1.val, n2=p.n2.val;
+    const th1=p.ang.val*Math.PI/180;
+    const iy=H*0.5;
+
+    g.fillStyle='rgba(30,58,138,0.35)'; g.fillRect(0,0,W,iy);
+    g.fillStyle='rgba(120,53,15,0.25)'; g.fillRect(0,iy,W,H-iy);
+    g.strokeStyle='#64748b'; g.lineWidth=2;
+    g.beginPath(); g.moveTo(0,iy); g.lineTo(W,iy); g.stroke();
+
+    const ox=W*0.5, oy=iy;
+
+    // 法线
+    g.strokeStyle='#475569'; g.setLineDash([6,6]); g.lineWidth=1;
+    g.beginPath(); g.moveTo(ox,oy-H*0.42); g.lineTo(ox,oy+H*0.42); g.stroke();
+    g.setLineDash([]);
+
+    const len=Math.min(W,H)*0.38;
+
+    // 入射光
+    const ix=ox-Math.sin(th1)*len, iyy=oy-Math.cos(th1)*len;
+    g.strokeStyle='#fbbf24'; g.lineWidth=3;
+    g.beginPath(); g.moveTo(ix,iyy); g.lineTo(ox,oy); g.stroke();
+    arrow(g,ix,iyy,ox,oy,'#fbbf24',3,10);
+
+    const s2=n1*Math.sin(th1)/n2;
+    let tir=false;
+    if(s2>1) tir=true;
+
+    // 反射光
+    const rx=ox+Math.sin(th1)*len, ry=oy-Math.cos(th1)*len;
+    g.strokeStyle='rgba(148,163,184,0.8)'; g.lineWidth=2; g.setLineDash([5,5]);
+    g.beginPath(); g.moveTo(ox,oy); g.lineTo(rx,ry); g.stroke();
+    g.setLineDash([]);
+
+    if(!tir){
+      const th2=Math.asin(s2);
+      const tx=ox+Math.sin(th2)*len, ty=oy+Math.cos(th2)*len;
+      g.strokeStyle='#38bdf8'; g.lineWidth=3;
+      g.beginPath(); g.moveTo(ox,oy); g.lineTo(tx,ty); g.stroke();
+      arrow(g,ox,oy,tx,ty,'#38bdf8',3,10);
+
+      // 角度弧
+      g.strokeStyle='#fbbf24'; g.lineWidth=1.5;
+      g.beginPath(); g.arc(ox,oy,60,-Math.PI/2-th1,-Math.PI/2); g.stroke();
+      g.strokeStyle='#38bdf8';
+      g.beginPath(); g.arc(ox,oy,60,Math.PI/2-th2,Math.PI/2); g.stroke();
+
+      txt(g,`θ₁ = ${p.ang.val}°`,ox-80,oy-90,'#fbbf24',13);
+      txt(g,`θ₂ = ${(th2*180/Math.PI).toFixed(1)}°`,ox+80,oy+90,'#38bdf8',13);
+      txt(g,`n₁ sinθ₁ = n₂ sinθ₂`,20,28,'#93c5fd',14);
+    } else {
+      txt(g,`⚠ 全反射！sinθ₂ = ${s2.toFixed(2)} > 1`,20,28,'#ef4444',15);
+      const thc=n2<n1?Math.asin(n2/n1)*180/Math.PI:90;
+      txt(g,`临界角 θ_c = ${thc.toFixed(1)}°`,20,52,'#f59e0b',14);
+    }
+
+    txt(g,`n₁ = ${n1.toFixed(2)}`,20,H-50,'#94a3b8',13);
+    txt(g,`n₂ = ${n2.toFixed(2)}`,20,H-26,'#94a3b8',13);
+    if(n2<n1 && !tir){
+      txt(g,`临界角 θ_c = ${(Math.asin(n2/n1)*180/Math.PI).toFixed(1)}°`,W-20,26,'#64748b',13,'right');
+    }
+  }
+});
+
+/* ---------- 13. 驻波 ---------- */
+EX.push({
+  id:'wave', name:'弦上的驻波', cat:'光学与波动',
+  hist:'梅尔森在 1830 年代测量了弦振动频率与张力、线密度的关系：f ∝ √(T/μ)。这一规律后来被用于所有弦乐器的调音，也验证了波动方程的正确性。',
+  formulas:['波速：v = √(T/μ)','驻波条件：L = n·λ/2','频率：f = (n/2L)·√(T/μ)','波形：y = A·sin(nπx/L)·cos(ωt)'],
+  knowledge:'当弦的两端固定时，只有特定波长（半波长的整数倍）的波才能形成稳定驻波。驻波由两列传播方向相反的波叠加而成，波节处始终静止，波腹处振幅最大。改变张力可以改变波速，从而改变音调——这就是吉他用旋钮调音的原理。',
+  params:{
+    n:{label:'谐波次数 n', min:1, max:6, step:1, val:2},
+    T:{label:'张力 T', min:10, max:200, step:5, val:80},
+    mu:{label:'线密度 μ', min:0.5, max:8, step:0.1, val:2},
+    A:{label:'振幅 A', min:0.2, max:1, step:0.05, val:0.7}
+  },
+  reset(st,p){ st.t=0; },
+  update(st,p,dt){ st.t+=dt; },
+  draw(g,st,p,W,H){
+    bg(g,W,H); grid(g,W,H,50);
+    const Lpx=Math.min(W*0.76,760);
+    const x0=(W-Lpx)/2, y0=H*0.5;
+    const Apx=H*0.22*p.A.val;
+
+    const L=1.0;
+    const v=Math.sqrt(p.T.val/p.mu.val);
+    const omega=(p.n.val*Math.PI/L)*v;
+    const freq=omega/TAU;
+
+    // 弦
+    const N=300;
+    g.beginPath();
+    for(let i=0;i<=N;i++){
+      const t=i/N;
+      const y=Math.sin(p.n.val*Math.PI*t)*Math.cos(omega*st.t)*Apx;
+      const px=x0+Lpx*t, py=y0-y;
+      i?g.lineTo(px,py):g.moveTo(px,py);
+    }
+    g.strokeStyle='#38bdf8'; g.lineWidth=3; g.stroke();
+
+    // 两列行波（淡显）
+    g.lineWidth=1;
+    for(const sgn of [1,-1]){
+      g.beginPath();
+      for(let i=0;i<=N;i++){
+        const t=i/N;
+        const y=0.5*Apx*Math.sin((p.n.val*Math.PI*t - sgn*omega*st.t))*sgn;
+        const px=x0+Lpx*t, py=y0-y;
+        i?g.lineTo(px,py):g.moveTo(px,py);
+      }
+      g.strokeStyle='rgba(148,163,184,0.25)'; g.stroke();
+    }
+
+    // 波节
+    for(let i=0;i<=p.n.val;i++){
+      const px=x0+Lpx*i/p.n.val;
+      g.fillStyle='#f59e0b'; g.beginPath(); g.arc(px,y0,5,0,TAU); g.fill();
+    }
+    // 端点
+    g.fillStyle='#64748b';
+    g.fillRect(x0-10,y0-16,10,32);
+    g.fillRect(x0+Lpx,y0-16,10,32);
+
+    txt(g,`波速 v = √(T/μ) = ${v.toFixed(2)} m/s`,20,28,'#93c5fd',14);
+    txt(g,`频率 f = ${freq.toFixed(2)} Hz`,20,52,'#93c5fd',14);
+    txt(g,`波长 λ = 2L/n = ${(2/p.n.val).toFixed(3)} m`,20,76,'#93c5fd',14);
+    txt(g,`波节数 = ${p.n.val+1}`,20,100,'#94a3b8',13);
+    txt(g,`第 ${p.n.val} 谐波`,W-20,26,'#f59e0b',13,'right');
+  }
+});
+
+/* ---------- 14. 光电效应 ---------- */
+EX.push({
+  id:'photo', name:'光电效应', cat:'量子力学',
+  hist:'1887 年赫兹在实验中偶然发现紫外光能使金属放电。1905 年爱因斯坦提出"光量子"假说，成功解释了光电效应的全部规律，并因此获得 1921 年诺贝尔物理学奖。密立根在 1916 年用实验精确验证了这一理论。',
+  formulas:['光子能量：E = hν = hc/λ','爱因斯坦方程：hν = W + E_kmax','截止电压：eU₀ = E_kmax','红限频率：ν₀ = W / h'],
+  knowledge:'光电效应有三大"反常"：能否打出电子只取决于光的频率而非强度；最大初动能随频率线性增加；效应几乎瞬时发生。经典波动理论无法解释这些现象，只有把光看成一份份能量为 hν 的光子，才能全部说通——这是量子力学的开端。',
+  params:{
+    lam:{label:'光波长 λ (nm)', min:200, max:700, step:5, val:400},
+    W:{label:'逸出功 W (eV)', min:1, max:5, step:0.1, val:2.2},
+    I:{label:'光强（相对）', min:0.2, max:3, step:0.1, val:1}
+  },
+  reset(st,p){ st.e=[]; st.t=0; },
+  update(st,p,dt){
+    st.t+=dt;
+    const E=1240/p.lam.val;
+    const KE=E-p.W.val;
+    if(KE>0 && Math.random()<0.35*p.I.val){
+      st.e.push({x:0, y:(Math.random()-0.5)*0.6, v:0.6+Math.random()*0.8});
+    }
+    for(const e of st.e){ e.x+=e.v*dt*0.9; }
+    st.e=st.e.filter(e=>e.x<1);
+  },
+  draw(g,st,p,W,H){
+    bg(g,W,H,'#05070d');
+    const E=1240/p.lam.val;
+    const Wk=p.W.val;
+    const KE=E-Wk;
+    const U0=Math.max(0,KE);
+
+    const plateX=W*0.72, plateW=26;
+    const topY=H*0.22, botY=H*0.78;
+    const inX=W*0.26;
+
+    // 阴极
+    g.fillStyle='#334155'; g.strokeStyle='#64748b'; g.lineWidth=2;
+    g.beginPath(); g.roundRect(inX-10,topY,20,botY-topY,4); g.fill(); g.stroke();
+    // 阳极
+    g.fillStyle='#1e293b'; g.strokeStyle='#3b82f6'; g.lineWidth=2;
+    g.beginPath(); g.roundRect(plateX,topY,plateW,botY-topY,4); g.fill(); g.stroke();
+
+    // 入射光
+    const lam=p.lam.val;
+    const hue=lam<450?270:(lam<520?210:(lam<600?50:20));
+    const col=`hsl(${hue},95%,60%)`;
+    const n=Math.round(5*p.I.val);
+    for(let i=0;i<n;i++){
+      const yy=topY+20+(botY-topY-40)*(i+0.5)/n;
+      const off=(st.t*160+i*37)%200;
+      g.strokeStyle=col; g.globalAlpha=0.55; g.lineWidth=2.5;
+      g.beginPath(); g.moveTo(0,yy); g.lineTo(inX-14,yy); g.stroke();
+      g.globalAlpha=1;
+    }
+    arrow(g,20,H*0.16,inX-16,H*0.16,col,2.5,10);
+    txt(g,`λ = ${lam} nm`,20,H*0.16-18,col,13);
+
+    // 光电子
+    if(KE>0){
+      for(const e of st.e){
+        const px=inX+(plateX-inX)*e.x;
+        const py=(topY+botY)/2+e.y*(botY-topY)*0.38;
+        g.fillStyle='#22c55e';
+        g.beginPath(); g.arc(px,py,4,0,TAU); g.fill();
+      }
+    }
+
+    // 数据面板
+    const px0=W*0.05, py0=botY+34;
+    txt(g,`光子能量 E = 1240/λ = ${E.toFixed(2)} eV`,px0,py0,'#93c5fd',14);
+    txt(g,`逸出功 W = ${Wk.toFixed(2)} eV`,px0,py0+26,'#94a3b8',13);
+    if(KE>0){
+      txt(g,`最大初动能 Ek = E − W = ${KE.toFixed(2)} eV`,px0,py0+52,'#22c55e',14);
+      txt(g,`截止电压 U₀ = ${U0.toFixed(2)} V`,px0,py0+78,'#f59e0b',14);
+    } else {
+      txt(g,'⚠ 光子能量不足，无法打出电子（低于红限）',px0,py0+52,'#ef4444',14);
+      txt(g,`红限波长 λ₀ = 1240/W = ${(1240/Wk).toFixed(0)} nm`,px0,py0+78,'#64748b',13);
+    }
+  }
+});
+
+/* ---------- 15. 氢原子能级 ---------- */
+EX.push({
+  id:'hydrogen', name:'氢原子能级与光谱', cat:'量子力学',
+  hist:'1885 年巴耳末发现了氢光谱的经验公式；1913 年玻尔提出量子化轨道模型，成功解释了氢原子光谱。此后海森堡与薛定谔建立的量子力学给出了更深刻的描述。',
+  formulas:['能级：Eₙ = −13.6 / n²  (eV)','跃迁：hν = Eₙᵢ − Eₙf','光子波长：λ = 1240 / ΔE  (nm)','里德伯公式：1/λ = R(1/n_f² − 1/n_i²)'],
+  knowledge:'氢原子的电子只能处于一系列分立的能级上。当电子从高能级跃迁到低能级时会发射一个光子，其能量恰好等于两个能级之差。巴耳末系（跃迁到 n=2）落在可见光区，就是我们熟悉的氢原子光谱的红、青、蓝、紫四条谱线。',
+  params:{
+    ni:{label:'初态 nᵢ', min:2, max:6, step:1, val:3},
+    nf:{label:'末态 n_f', min:1, max:5, step:1, val:2}
+  },
+  reset(st,p){ st.t=0; },
+  update(st,p,dt){ st.t+=dt; },
+  draw(g,st,p,W,H){
+    bg(g,W,H,'#05070d');
+    const ni=p.ni.val, nf=p.nf.val;
+    const Ei=-13.6/(ni*ni), Ef=-13.6/(nf*nf);
+    const dE=Ei-Ef;
+
+    const x0=W*0.14, x1=W*0.44;
+    const yTop=H*0.15, yBot=H*0.85;
+    const Emax=0.5, Emin=-14;
+    const Y=E=>yBot-(E-Emin)/(Emax-Emin)*(yBot-yTop);
+
+    // 能级线
+    for(let n=1;n<=6;n++){
+      const E=-13.6/(n*n);
+      const y=Y(E);
+      const isActive=(n===ni||n===nf);
+      g.strokeStyle=isActive?'#38bdf8':'#1e3a5f';
+      g.lineWidth=isActive?2.5:1.5;
+      g.beginPath(); g.moveTo(x0,y); g.lineTo(x1,y); g.stroke();
+      txt(g,`n=${n}`,x0-14,y,isActive?'#93c5fd':'#475569',12,'right');
+      txt(g,`${E.toFixed(2)} eV`,x1+8,y,'#475569',11,'left');
+    }
+    // 电离线
+    g.strokeStyle='#334155'; g.setLineDash([4,4]);
+    g.beginPath(); g.moveTo(x0,Y(0)); g.lineTo(x1,Y(0)); g.stroke();
+    g.setLineDash([]);
+    txt(g,'电离 (0 eV)',x1+8,Y(0),'#334155',11,'left');
+
+    // 跃迁箭头
+    if(dE!==0){
+      const y1=Y(Ei), y2=Y(Ef);
+      const ax=x0+70;
+      g.strokeStyle=dE>0?'#22c55e':'#f59e0b';
+      g.lineWidth=3;
+      arrow(g,ax,y1,ax,y2,dE>0?'#22c55e':'#f59e0b',3,11);
+
+      const lam=1240/Math.abs(dE);
+      txt(g, dE>0?'发射光子':'吸收光子', ax+16, (y1+y2)/2-14, dE>0?'#22c55e':'#f59e0b',13);
+
+      // 光子波
+      const startY=(y1+y2)/2, gx0=ax+30, gx1=W*0.94;
+      let hue=0;
+      if(lam<400) hue=270;
+      else if(lam<450) hue=255;
+      else if(lam<490) hue=200;
+      else if(lam<560) hue=120;
+      else if(lam<600) hue=55;
+      else if(lam<650) hue=25;
+      else hue=0;
+      const vis=lam>=380&&lam<=750;
+      const col = vis?`hsl(${hue},95%,60%)`:'#475569';
+      g.strokeStyle=col; g.lineWidth=2.5;
+      g.beginPath();
+      for(let x=gx0;x<=gx1;x+=2){
+        const y=startY+Math.sin((x-gx0)/14)*16*(1-((x-gx0)/(gx1-gx0))*0.5);
+        x===gx0?g.moveTo(x,y):g.lineTo(x,y);
+      }
+      g.stroke();
+
+      txt(g,`ΔE = ${Math.abs(dE).toFixed(2)} eV`,W*0.52,H*0.14,'#93c5fd',14);
+      txt(g,`λ = 1240 / ΔE = ${lam.toFixed(1)} nm`,W*0.52,H*0.14+26,'#38bdf8',14);
+      txt(g, vis?'可见光':'不可见（紫外/红外）', W*0.52, H*0.14+52, vis?col:'#64748b',13);
+
+      // 光谱条
+      const sy=H*0.93;
+      g.fillStyle='#0a0f1a'; g.fillRect(W*0.14,sy-8,W*0.76,16);
+      if(vis){
+        const px=W*0.14+((lam-380)/370)*W*0.76;
+        g.fillStyle=col; g.fillRect(px-2,sy-8,4,16);
+      }
+      txt(g,'可见光谱',W*0.14-8,sy,'#475569',11,'right');
+    } else {
+      txt(g,'请选择不同的初末能级',W*0.55,H*0.5,'#64748b',14);
+    }
+  }
+});
+
+/* ---------- 16. 无限深势阱 ---------- */
+EX.push({
+  id:'well', name:'一维无限深势阱', cat:'量子力学',
+  hist:'1926 年薛定谔写出波动方程并求解了氢原子。无限深方势阱是最简单的量子束缚态模型，它清晰地展示了"能量量子化"和"零点能"这两个纯量子效应。',
+  formulas:['波函数：ψₙ(x) = √(2/L)·sin(nπx/L)','能级：Eₙ = n²π²ħ²/(2mL²)','概率密度：|ψₙ|²','节点数：n − 1'],
+  knowledge:'被束缚在势阱中的粒子不能拥有任意能量，只能处于一系列离散的能级上。n=1 的基态能量不为零，称为"零点能"——这是海森堡不确定关系的直接结果：粒子不可能同时具有确定的位置和动量为零。n 越大，波函数振荡越快，节点越多，动能也越大。',
+  params:{
+    n:{label:'量子数 n', min:1, max:8, step:1, val:1}
+  },
+  reset(st,p){ st.t=0; },
+  update(st,p,dt){ st.t+=dt; },
+  draw(g,st,p,W,H){
+    bg(g,W,H,'#05070d');
+    const n=p.n.val;
+    const L=Math.min(W*0.72,760);
+    const x0=(W-L)/2;
+    const cy=H*0.42;
+    const A=H*0.2;
+
+    // 势阱壁
+    g.fillStyle='#1e293b';
+    g.fillRect(x0-24,cy-H*0.32,24,H*0.64);
+    g.fillRect(x0+L,cy-H*0.32,24,H*0.64);
+    g.strokeStyle='#3b82f6'; g.lineWidth=2;
+    g.beginPath(); g.moveTo(x0-24,cy-H*0.32); g.lineTo(x0-24,cy+H*0.32); g.stroke();
+    g.beginPath(); g.moveTo(x0+L+24,cy-H*0.32); g.lineTo(x0+L+24,cy+H*0.32); g.stroke();
+    txt(g,'V = ∞',x0-12,cy-H*0.36,'#64748b',12,'center');
+    txt(g,'V = ∞',x0+L+12,cy-H*0.36,'#64748b',12,'center');
+    txt(g,'V = 0',x0+L/2,cy+H*0.36,'#64748b',12,'center');
+
+    // 时间相位（视觉动画）
+    const omega=n*n*0.6;
+    const phase=Math.cos(omega*st.t);
+
+    // 波函数实部
+    const N=400;
+    g.beginPath();
+    for(let i=0;i<=N;i++){
+      const t=i/N;
+      const psi=Math.sqrt(2)*Math.sin(n*Math.PI*t)*phase;
+      const px=x0+L*t, py=cy-psi*A;
+      i?g.lineTo(px,py):g.moveTo(px,py);
+    }
+    g.strokeStyle='#38bdf8'; g.lineWidth=2.5; g.stroke();
+
+    // 概率密度
+    const gy=H*0.82;
+    g.beginPath();
+    g.moveTo(x0,gy);
+    for(let i=0;i<=N;i++){
+      const t=i/N;
+      const p2=2*Math.sin(n*Math.PI*t)**2;
+      const px=x0+L*t, py=gy-p2*H*0.2;
+      g.lineTo(px,py);
+    }
+    g.lineTo(x0+L,gy); g.closePath();
+    g.fillStyle='rgba(168,85,247,0.28)'; g.fill();
+    g.strokeStyle='#a855f7'; g.lineWidth=2; g.stroke();
+    g.strokeStyle='#334155'; g.lineWidth=1;
+    g.beginPath(); g.moveTo(x0,gy); g.lineTo(x0+L,gy); g.stroke();
+    txt(g,'概率密度 |ψ|²',x0+L/2,gy+22,'#a855f7',12,'center');
+
+    const E=n*n;
+    txt(g,`量子数 n = ${n}`,20,28,'#93c5fd',14);
+    txt(g,`能级 Eₙ ∝ n² = ${E} E₁`,20,52,'#93c5fd',14);
+    txt(g,`节点数 = ${n-1}`,20,76,'#94a3b8',13);
+    txt(g,'基态能量不为零 → 零点能（不确定关系的体现）',W/2,H*0.06,'#64748b',12,'center');
+  }
+});
+
+/* ---------- 17. 量子隧穿 ---------- */
+EX.push({
+  id:'tunnel', name:'量子隧穿', cat:'量子力学',
+  hist:'1928 年伽莫夫用量子隧穿解释了 α 衰变；1958 年江崎玲于奈发明隧道二极管。扫描隧道显微镜（STM）正是利用电子隧穿电流来"看到"单个原子，其发明者获得了 1986 年诺贝尔奖。',
+  formulas:['势垒内衰减：κ = √(2m(V₀−E))/ħ','透射系数（E<V₀）：T = [1 + V₀²sinh²(κa) / (4E(V₀−E))]⁻¹','穿透深度：δ ≈ 1/κ'],
+  knowledge:'经典粒子遇到高于自身能量的势垒时会被完全反射。但量子波函数在势垒内部并不会突然变为零，而是指数衰减——只要势垒足够薄，波函数就能在另一侧"残留"下来，粒子有非零概率直接穿过去。这就是量子隧穿，是太阳核聚变、放射性衰变、闪存芯片和 STM 的共同基础。',
+  params:{
+    E:{label:'粒子能量 E', min:0.5, max:5, step:0.1, val:1.5},
+    V0:{label:'势垒高度 V₀', min:0.5, max:6, step:0.1, val:3},
+    a:{label:'势垒宽度 a', min:0.3, max:3, step:0.1, val:1.2}
+  },
+  reset(st,p){ st.t=0; },
+  update(st,p,dt){ st.t+=dt; },
+  draw(g,st,p,W,H){
+    bg(g,W,H,'#05070d');
+    const E=p.E.val, V0=p.V0.val, a=p.a.val;
+
+    let T, kappa=0;
+    if(E<V0){
+      kappa=Math.sqrt(2*(V0-E));
+      const sh=Math.sinh(kappa*a);
+      T=1/(1+(V0*V0*sh*sh)/(4*E*(V0-E)));
+    } else if(E>V0){
+      const k2=Math.sqrt(2*(E-V0));
+      const sn=Math.sin(k2*a);
+      T=1/(1+(V0*V0*sn*sn)/(4*E*(E-V0)));
+    } else {
+      T=1/(1+ (V0*a*a)/2);
+    }
+    T=clamp(T,0,1);
+
+    const by0=H*0.30, by1=H*0.70;
+    const x0=W*0.08, x1=W*0.94;
+    const bw=Math.min(W*0.5, 60+Math.abs(a)*70);
+    const bx0=W*0.46, bx1=bx0+bw;
+
+    // 势垒
+    const bh=clamp(V0/6,0.1,1)*(by1-by0);
+    g.fillStyle='rgba(239,68,68,0.18)';
+    g.fillRect(bx0,by1-bh,bx1-bx0,bh);
+    g.strokeStyle='#ef4444'; g.lineWidth=2;
+    g.strokeRect(bx0,by1-bh,bx1-bx0,bh);
+    txt(g,`V₀ = ${V0}`,(bx0+bx1)/2,by1-bh-14,'#ef4444',13,'center');
+
+    // 能量线
+    const ey=by1-clamp(E/6,0.1,1)*(by1-by0);
+    g.strokeStyle='#38bdf8'; g.setLineDash([7,5]); g.lineWidth=1.5;
+    g.beginPath(); g.moveTo(x0,ey); g.lineTo(x1,ey); g.stroke();
+    g.setLineDash([]);
+    txt(g,`E = ${E}`,x0,ey-12,'#38bdf8',13);
+
+    // 波函数
+    const k1=1.0;
+    const ph=st.t*4;
+    const A1=1, A2=Math.sqrt(T);
+    const ampPx=H*0.16;
+
+    g.beginPath();
+    let started=false;
+    for(let x=x0;x<=x1;x+=2){
+      let y, env;
+      if(x<bx0){
+        env=A1;
+        y=Math.sin((x-x0)*0.14 - ph)*env;
+      } else if(x<=bx1){
+        const d=(x-bx0)/bw;
+        if(E<V0){
+          env=Math.exp(-kappa*a*d)*1.0;
+          y=env*Math.cos(ph*0.7);
+        } else {
+          env=1;
+          y=Math.sin((x-x0)*0.14*Math.sqrt(E/V0) - ph)*env;
+        }
+      } else {
+        env=A2;
+        y=Math.sin((x-x0)*0.14 - ph)*env;
+      }
+      const py=(E<V0?(ey):ey)-y*ampPx;
+      if(!started){ g.moveTo(x,py); started=true; } else g.lineTo(x,py);
+    }
+    g.strokeStyle='#fbbf24'; g.lineWidth=2.2; g.stroke();
+
+    // 箭头
+    arrow(g,x0+20,ey-ampPx-30,bx0-20,ey-ampPx-30,'#64748b',2,8);
+    txt(g,'入射波',x0+30,ey-ampPx-46,'#64748b',12);
+    if(T>0.001){
+      arrow(g,bx1+20,ey-ampPx-30,x1-20,ey-ampPx-30,'#22c55e',2,8);
+      txt(g,'透射波',bx1+40,ey-ampPx-46,'#22c55e',12);
+    }
+
+    const pct=(T*100);
+    txt(g,`透射系数 T = ${pct<0.01?pct.toExponential(2):pct.toFixed(2)} %`,W/2,H*0.10,'#22c55e',17,'center');
+    txt(g,`反射系数 R = ${(100-pct).toFixed(2)} %`,W/2,H*0.10+26,'#f59e0b',14,'center');
+    if(E<V0) txt(g,`衰减常数 κ = ${kappa.toFixed(2)}，κa = ${(kappa*a).toFixed(2)}`,20,H-40,'#94a3b8',13);
+    else txt(g,'E > V₀：量子粒子仍有一定概率被反射！',20,H-40,'#94a3b8',13);
+  }
+});
+
+/* ---------- 18. 相对论 ---------- */
+EX.push({
+  id:'relativity', name:'狭义相对论：时间膨胀与长度收缩', cat:'相对论',
+  hist:'1905 年爱因斯坦发表《论动体的电动力学》，提出狭义相对论。他抛弃了绝对时间的概念，指出光速在一切惯性系中不变。这一假设直接导出了"运动的钟变慢、运动的尺变短"的结论，已被 μ 子寿命、粒子加速器等实验精确验证。',
+  formulas:['洛伦兹因子：γ = 1 / √(1 − v²/c²)','时间膨胀：Δt = γ·Δt₀','长度收缩：L = L₀ / γ','质能关系：E = mc²'],
+  knowledge:'光速不变原理意味着：无论观察者以多快的速度运动，测得的光速永远是 c。为了满足这一点，时间与空间必须"让步"。在静止参考系看来，运动的时钟走得慢（时间膨胀），运动的物体沿运动方向变短（长度收缩）。当 v→c 时 γ→∞，这些效应变得极端显著；而日常速度下 γ≈1，所以我们感受不到相对论效应。',
+  params:{
+    beta:{label:'速度 v / c', min:0, max:0.99, step:0.01, val:0.6}
+  },
+  reset(st,p){ st.t=0; },
+  update(st,p,dt){ st.t+=dt; },
+  draw(g,st,p,W,H){
+    bg(g,W,H,'#05070d');
+    const b=p.beta.val;
+    const gamma=1/Math.sqrt(1-b*b);
+
+    // ===== 上半部分：光子钟 =====
+    const clockY=H*0.30;
+    const clockH=H*0.20;
+    const mx1=W*0.18, mx2=W*0.42;
+
+    // 静止钟
+    g.strokeStyle='#3b82f6'; g.lineWidth=3;
+    g.beginPath(); g.moveTo(mx1,clockY-clockH/2); g.lineTo(mx2,clockY-clockH/2); g.stroke();
+    g.beginPath(); g.moveTo(mx1,clockY+clockH/2); g.lineTo(mx2,clockY+clockH/2); g.stroke();
+    const ph0=(st.t*1.5)%2;
+    const fy0=clockY+(ph0<1?-1:1)*(clockH/2)+(ph0<1?ph0:2-ph0)*(clockH);
+    const fy=(ph0<1)? clockY-clockH/2+ph0*clockH : clockY+clockH/2-(ph0-1)*clockH;
+    g.fillStyle='#fbbf24';
+    g.beginPath(); g.arc((mx1+mx2)/2, fy, 6, 0, TAU); g.fill();
+    txt(g,'静止参考系的光子钟',(mx1+mx2)/2,clockY-clockH/2-20,'#3b82f6',13,'center');
+
+    // 运动钟
+    const mvx=W*0.55+((st.t*80*b)%(W*0.32));
+    const mcx=mvx, mcy=clockY;
+    g.strokeStyle='#22c55e'; g.lineWidth=3;
+    g.beginPath(); g.moveTo(mcx,clockY-clockH/2); g.lineTo(mcx+W*0.14,clockY-clockH/2); g.stroke();
+    g.beginPath(); g.moveTo(mcx,clockY+clockH/2); g.lineTo(mcx+W*0.14,clockY+clockH/2); g.stroke();
+
+    // 光子斜线路径
+    const tprog=(st.t*1.5*(1/gamma))%2;
+    const u=(tprog<1)?tprog:2-tprog;
+    const phx=mcx+W*0.07+ (st.t*40*b)%(W*0.14)*0;
+    const fx=mcx+W*0.07;
+    const fpy=(tprog<1)? clockY-clockH/2+u*clockH : clockY+clockH/2-u*clockH;
+    g.fillStyle='#fbbf24';
+    g.beginPath(); g.arc(fx,fpy,6,0,TAU); g.fill();
+
+    // 之字形路径
+    g.strokeStyle='rgba(251,191,36,0.28)'; g.lineWidth=1.5;
+    g.beginPath(); g.moveTo(mcx+W*0.07,clockY-clockH/2); g.lineTo(mcx+W*0.07,clockY+clockH/2); g.stroke();
+
+    txt(g,'运动的光子钟（光子路径更长）',mcx+W*0.07,clockY-clockH/2-20,'#22c55e',13,'center');
+
+    // ===== 下半部分：长度收缩 =====
+    const barY=H*0.72;
+    const L0=W*0.5;
+    const L=L0/gamma;
+
+    g.fillStyle='#334155';
+    g.beginPath(); g.roundRect(W*0.2,barY-16,L0,32,6); g.fill();
+    txt(g,'静止长度 L₀',W*0.2+L0/2,barY-30,'#94a3b8',12,'center');
+
+    g.fillStyle='#22c55e';
+    g.beginPath(); g.roundRect(W*0.2,barY+30,L,32,6); g.fill();
+    txt(g,`运动长度 L = L₀/γ = ${(L/L0).toFixed(3)} L₀`,W*0.2+L/2,barY+80,'#22c55e',12,'center');
+
+    arrow(g,W*0.2+L+20,barY+46,W*0.2+L+70,barY+46,'#22c55e',2,8);
+    txt(g,`v = ${b.toFixed(2)}c`,W*0.2+L+80,barY+46,'#22c55e',12,'left');
+
+    // 数据
+    txt(g,`v = ${b.toFixed(2)} c`,W*0.78,H*0.10,'#93c5fd',15,'right');
+    txt(g,`γ = ${gamma.toFixed(4)}`,W*0.78,H*0.10+26,'#38bdf8',16,'right');
+    txt(g,`时间膨胀：Δt = γΔt₀`,W*0.78,H*0.10+52,'#f59e0b',13,'right');
+    txt(g,`长度收缩：L = L₀/γ`,W*0.78,H*0.10+74,'#f59e0b',13,'right');
+  }
+});
+
+/* ===================== 框架 ===================== */
+const cv=document.getElementById('cv');
+const ctx=cv.getContext('2d');
+let W=1,H=1;
+
+function resize(){
+  const wrap=document.getElementById('canvasWrap');
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  W=wrap.clientWidth; H=wrap.clientHeight;
+  cv.width=Math.floor(W*dpr); cv.height=Math.floor(H*dpr);
+  cv.style.width=W+'px'; cv.style.height=H+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  W_H=H;
+}
+window.addEventListener('resize',resize);
+
+let current=null, state={}, running=true;
+
+function fmtVal(v,def){
+  const dec=(def.step&&def.step<1)?(def.step<0.05?2:1):0;
+  return v.toFixed(dec);
+}
+
+function buildParams(ex){
+  const box=document.getElementById('params');
+  box.innerHTML='';
+  for(const [key,def] of Object.entries(ex.params)){
+    const row=document.createElement('div'); row.className='prow';
+    const lab=document.createElement('span'); lab.textContent=def.label;
+
+    if(def.type==='select'){
+      const sel=document.createElement('select');
+      def.options.forEach((o,i)=>{
+        const op=document.createElement('option'); op.value=i; op.textContent=o;
+        sel.appendChild(op);
+      });
+      sel.value=def.val;
+      sel.onchange=()=>{ def.val=+sel.value; if(ex.onChange) ex.onChange(state,ex.params); };
+      row.append(lab,sel);
+    } else {
+      const inp=document.createElement('input');
+      inp.type='range'; inp.min=def.min; inp.max=def.max; inp.step=def.step; inp.value=def.val;
+      const val=document.createElement('span'); val.className='val'; val.textContent=fmtVal(def.val,def);
+      inp.oninput=()=>{
+        def.val=+inp.value;
+        val.textContent=fmtVal(def.val,def);
+        if(ex.onChange) ex.onChange(state,ex.params);
+      };
+      row.append(lab,inp,val);
+    }
+    box.appendChild(row);
+  }
+}
+
+function updateInfo(ex){
+  document.getElementById('infoName').textContent=ex.name;
+  document.getElementById('infoHist').textContent=ex.hist;
+  document.getElementById('infoFormulas').innerHTML=
+    ex.formulas.map(f=>`<div class="fml">${f}</div>`).join('');
+  document.getElementById('infoKnow').textContent=ex.knowledge;
+}
+
+function loadExperiment(ex){
+  current=ex;
+  state={};
+  ex.reset(state,ex.params);
+  buildParams(ex);
+  updateInfo(ex);
+  document.querySelectorAll('.ex').forEach(el=>{
+    el.classList.toggle('active', el.dataset.id===ex.id);
+  });
+}
+
+function buildList(){
+  const list=document.getElementById('exlist');
+  const cats={};
+  EX.forEach(ex=>{ (cats[ex.cat]=cats[ex.cat]||[]).push(ex); });
+
+  const order=['经典力学','电磁学','热学','光学与波动','量子力学','相对论'];
+  const keys=Object.keys(cats).sort((a,b)=>{
+    const ia=order.indexOf(a), ib=order.indexOf(b);
+    return (ia<0?99:ia)-(ib<0?99:ib);
+  });
+
+  keys.forEach(cat=>{
+    const h=document.createElement('div');
+    h.className='cat'; h.textContent=cat;
+    list.appendChild(h);
+    cats[cat].forEach(ex=>{
+      const d=document.createElement('div');
+      d.className='ex'; d.dataset.id=ex.id; d.textContent=ex.name;
+      d.title=ex.name;
+      d.onclick=()=>loadExperiment(ex);
+      list.appendChild(d);
+    });
+  });
+}
+
+/* 按钮 */
+document.getElementById('btnPlay').onclick=function(){
+  running=!running;
+  this.textContent=running?'⏸ 暂停':'▶ 继续';
+  this.classList.toggle('on',running);
+};
+document.getElementById('btnReset').onclick=()=>{
+  if(current){ state={}; current.reset(state,current.params); }
+};
+document.getElementById('btnInfo').onclick=function(){
+  const panel=document.getElementById('info');
+  panel.classList.toggle('hidden');
+  this.classList.toggle('on', !panel.classList.contains('hidden'));
+};
+
+/* 主循环 */
+let last=performance.now();
+function loop(now){
+  let dt=(now-last)/1000;
+  last=now;
+  dt=Math.min(dt,0.05);
+
+  if(running && current && current.update){
+    current.update(state,current.params,dt);
+  }
+
+  ctx.clearRect(0,0,W,H);
+  if(current){
+    current.draw(ctx,state,current.params,W,H);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+/* 启动 */
+resize();
+buildList();
+loadExperiment(EX[0]);
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
