@@ -4,7 +4,7 @@
   "repo": "student-game-hub",
   "branch": "main",
   "uploadOpen": true,
-  "requireApproval": false,
+  "requireApproval": true,
   "tags": [
     "數學",
     "中文",
