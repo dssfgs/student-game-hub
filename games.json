@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-11-14T03:10:07.654Z",
+  "updated": "2026-11-14T03:14:13.010Z",
   "games": [
     {
       "id": "261114-64gqa",
@@ -17,7 +17,7 @@
       "files": 1,
       "bytes": 67147,
       "created": "2026-11-14T03:10:05.853Z",
-      "status": "pending"
+      "status": "published"
     },
     {
       "id": "261114-zzh45",
