@@ -1,14 +1,34 @@
 {
   "version": 1,
-  "updated": "2026-11-13T04:00:00.000Z",
+  "updated": "2026-11-14T02:52:56.114Z",
   "games": [
+    {
+      "id": "261114-cbndr",
+      "title": "一元一次不等式",
+      "author": "cy",
+      "klass": "3a",
+      "desc": "一元一次不等式 訓練可選擇兩個模式簡單 進階,內有mc,應用,長問",
+      "tags": [
+        "數學"
+      ],
+      "tool": "deepseek",
+      "entry": "index.html",
+      "cover": null,
+      "files": 1,
+      "bytes": 26095,
+      "created": "2026-11-14T02:52:54.306Z",
+      "status": "pending"
+    },
     {
       "id": "coordinate-gomoku",
       "title": "座標五子棋",
       "author": "示範作品",
       "klass": "",
       "desc": "在座標平面上對弈：點擊棋盤或輸入 (x, y) 座標落子，先連成五子的一方勝出。可以雙人對戰，也可以挑戰電腦。",
-      "tags": ["數學", "棋類"],
+      "tags": [
+        "數學",
+        "棋類"
+      ],
       "tool": "Perplexity",
       "entry": "index.html",
       "cover": null,

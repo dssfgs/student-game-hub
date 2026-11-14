@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>一元一次不等式練習</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+  }
+  .app {
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    width: 100%;
+    max-width: 620px;
+    padding: 24px;
+  }
+  h1 { font-size: 1.4rem; text-align: center; color: #333; margin-bottom: 16px; }
+  
+  /* 開始畫面 */
+  #startScreen { text-align: center; padding: 20px 0; }
+  #startScreen p { color: #666; margin-bottom: 30px; font-size: 1.1rem; }
+  .level-btn {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    margin-bottom: 16px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .level-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+  .level-btn.lv1 { background: #e8f8ef; color: #27ae60; border: 2px solid #27ae60; }
+  .level-btn.lv2 { background: #fdecea; color: #e74c3c; border: 2px solid #e74c3c; }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.95rem;
+    color: #555;
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  .timer.warn { color: #e74c3c; }
+  .progress-outer {
+    height: 10px;
+    background: #eee;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .progress-inner {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    transition: width 0.3s;
+  }
+  .question-box {
+    background: #f7f8fc;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .q-type {
+    font-size: 0.8rem;
+    color: #764ba2;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+  .q-text {
+    font-size: 1.4rem;
+    color: #222;
+    font-weight: 600;
+    line-height: 1.5;
+    width: 100%;
+  }
+  /* 文字題專用樣式 */
+  .q-text .zh { margin-bottom: 12px; font-size: 1.3rem; font-weight: 600;}
+  .q-text .en { font-size: 0.95rem; color: #555; font-style: italic; border-top: 1px solid #ddd; padding-top: 10px; font-weight: normal;}
+  .q-text .math { font-family: monospace; background: #eef; padding: 2px 6px; border-radius: 4px; font-size: 1.1rem; font-weight: bold;}
+
+  .options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .option-btn {
+    padding: 14px;
+    font-size: 1.2rem;
+    border: 2px solid #d0d4e4;
+    background: #fff;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 600;
+    color: #333;
+  }
+  .option-btn:hover:not(:disabled) { border-color: #667eea; background: #f0f2ff; }
+  .option-btn.correct { border-color: #27ae60; background: #e8f8ef; color: #27ae60; }
+  .option-btn.wrong { border-color: #e74c3c; background: #fdecea; color: #e74c3c; }
+  .option-btn:disabled { cursor: default; }
+  .input-area { display: flex; flex-direction: column; gap: 12px; }
+  .answer-input {
+    padding: 14px;
+    font-size: 1.3rem;
+    border: 2px solid #d0d4e4;
+    border-radius: 12px;
+    text-align: center;
+    font-weight: 600;
+    outline: none;
+    width: 100%;
+  }
+  .answer-input:focus { border-color: #667eea; }
+  .submit-btn {
+    padding: 14px;
+    font-size: 1.1rem;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 700;
+  }
+  .feedback {
+    margin-top: 16px;
+    padding: 14px;
+    border-radius: 12px;
+    font-size: 1rem;
+    line-height: 1.6;
+    display: none;
+  }
+  .feedback.show { display: block; }
+  .feedback.ok { background: #e8f8ef; color: #1e7e45; }
+  .feedback.no { background: #fdecea; color: #b03a2e; }
+  .feedback .steps { margin-top: 8px; font-size: 0.9rem; color: #555; white-space: pre-line; }
+  .next-btn {
+    margin-top: 12px;
+    width: 100%;
+    padding: 14px;
+    font-size: 1.1rem;
+    background: #333;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 700;
+  }
+  .hidden { display: none !important; }
+  
+  /* 數線圖片化設計 */
+  .numberline-wrap { 
+    margin: 15px 0 5px 0; 
+    width: 100%; 
+    max-width: 500px; 
+    cursor: zoom-in;
+    transition: transform 0.2s;
+  }
+  .numberline-wrap:hover { transform: scale(1.02); }
+  .numberline-svg {
+    width: 100%;
+    height: auto;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  }
+
+  /* 彈出放大圖片 (Lightbox) */
+  #lightbox {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    cursor: zoom-out;
+    padding: 20px;
+  }
+  #lightbox.show { display: flex; }
+  #lightbox svg {
+    width: 100%;
+    max-width: 900px;
+    height: auto;
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .lightbox-hint {
+    position: absolute;
+    bottom: 20px;
+    color: #fff;
+    font-size: 1rem;
+    opacity: 0.7;
+  }
+
+  .result-screen { text-align: center; padding: 10px 0; }
+  .result-screen h2 { color: #333; margin-bottom: 16px; font-size: 1.5rem; }
+  .stat { font-size: 1.1rem; color: #555; margin: 8px 0; }
+  .stat strong { color: #764ba2; font-size: 1.3rem; }
+  .big-score { font-size: 3rem; font-weight: 800; color: #764ba2; margin: 10px 0; }
+  .overtime { color: #e74c3c; font-weight: 700; }
+  .restart-btn {
+    margin-top: 20px;
+    padding: 14px 40px;
+    font-size: 1.1rem;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>一元一次不等式練習</h1>
+
+  <!-- 開始畫面 -->
+  <div id="startScreen">
+    <p>請選擇難度：</p>
+    <button class="level-btn lv1" onclick="startGame(1)">Level 1 (基礎)</button>
+    <button class="level-btn lv2" onclick="startGame(2)">Level 2 (進階 + 文字題)</button>
+  </div>
+
+  <!-- 遊戲畫面 -->
+  <div id="gameScreen" class="hidden">
+    <div class="topbar">
+      <span id="qCounter">第 1 / 10 題</span>
+      <span id="scoreDisplay">得分：0</span>
+      <span id="timerDisplay" class="timer">45s</span>
+    </div>
+    <div class="progress-outer"><div class="progress-inner" id="progressBar"></div></div>
+
+    <div class="question-box">
+      <div class="q-type" id="qType"></div>
+      <div class="q-text" id="qText"></div>
+      <div id="nlContainer"></div>
+    </div>
+
+    <div id="answerArea"></div>
+    <div class="feedback" id="feedback"></div>
+    <button class="next-btn hidden" id="nextBtn">下一題 ➜</button>
+  </div>
+
+  <!-- 結果畫面 -->
+  <div id="resultScreen" class="result-screen hidden">
+    <h2>練習完成！</h2>
+    <div class="big-score" id="finalScore"></div>
+    <div class="stat" id="finalCorrect"></div>
+    <div class="stat" id="finalTime"></div>
+    <button class="restart-btn" onclick="showStartScreen()">返回主頁</button>
+  </div>
+</div>
+
+<!-- 放大圖片用嘅 Lightbox -->
+<div id="lightbox" onclick="closeLightbox()">
+  <div id="lightboxContent"></div>
+  <div class="lightbox-hint">點擊任意位置關閉</div>
+</div>
+
+<script>
+/* ============ 工具函數 ============ */
+function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function pick(arr) { return arr[randInt(0, arr.length - 1)]; }
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function fmt(sign, val) { return "x " + sign + " " + val; }
+function normalizeAnswer(str) {
+  let s = str.replace(/\s+/g, "").toLowerCase();
+  s = s.replace(/≤/g, "<=").replace(/≥/g, ">=");
+  let m = s.match(/^(-?\d+(?:\/\d+)?)(<=|>=|<|>)(x)$/);
+  if (m) {
+    const val = m[1]; let op = m[2];
+    const flip = { "<": ">", ">": "<", "<=": ">=", ">=": "<=" };
+    s = "x" + flip[op] + val;
+  }
+  return s;
+}
+
+/* ============ 選擇題選項生成器 ============ */
+function makeOptions(sign, val) {
+  const correct = fmt(sign, val);
+  const opts = new Set([correct]);
+  const signs = [">", "<", ">=", "<="];
+  const flip = { ">": "<", "<": ">", ">=": "<=", "<=": ">=" };
+  opts.add(fmt(flip[sign], val));
+  let off = randInt(1, 3) * (Math.random() < 0.5 ? 1 : -1);
+  if (off === 0) off = 1;
+  opts.add(fmt(sign, val + off));
+  let off2 = randInt(1, 3) * (Math.random() < 0.5 ? 1 : -1);
+  if (off2 === 0) off2 = 2;
+  opts.add(fmt(flip[sign], val + off2));
+  
+  let guard = 0;
+  while (opts.size < 4 && guard < 50) {
+    const s = pick(signs);
+    const v = val + randInt(-4, 4);
+    if (v !== val || s !== sign) opts.add(fmt(s, v));
+    guard++;
+  }
+  return shuffle(Array.from(opts));
+}
+
+/* ============ Level 1 題目生成器 ============ */
+function lv1Basic() {
+  const a = randInt(2, 5), x = randInt(-5, 6), b = randInt(-9, 9);
+  const c = a * x + b, op = pick([">", "<", ">=", "<="]);
+  const answer = fmt(op, x);
+  const text = `${a}x ${b >= 0 ? "+ " + b : "- " + Math.abs(b)} ${op} ${c}`;
+  const steps = `移項：${a}x ${op} ${c} ${b >= 0 ? "- " + b : "+ " + Math.abs(b)}\n${a}x ${op} ${c - b}\n兩邊除以 ${a}（正數，不變號）：x ${op} ${x}`;
+  return { type: "選擇題", text, answer, steps, options: makeOptions(op, x) };
+}
+
+function lv1Negative() {
+  const a = randInt(2, 5), x = randInt(-5, 6), b = -a * x;
+  const op = pick([">", "<", ">=", "<="]);
+  const flip = { ">": "<", "<": ">", ">=": "<=", "<=": ">=" };
+  const ansSign = flip[op], answer = fmt(ansSign, x);
+  const text = `-${a}x ${op} ${b}`;
+  const steps = `兩邊除以 -${a}（負數，不等號方向要改變）：\nx ${ansSign} ${x}`;
+  return { type: "選擇題", text, answer, steps, options: makeOptions(ansSign, x) };
+}
+
+function lv1Bracket() {
+  const a = randInt(2, 4), b = randInt(-5, 5), x = randInt(-4, 5);
+  const c = a * (x + b), op = pick([">", "<", ">=", "<="]);
+  const answer = fmt(op, x);
+  const text = `${a}(x ${b >= 0 ? "+ " + b : "- " + Math.abs(b)}) ${op} ${c}`;
+  const steps = `展開：${a}x ${a * b >= 0 ? "+ " + a * b : "- " + Math.abs(a * b)} ${op} ${c}\n移項：${a}x ${op} ${c - a * b}\n除以 ${a}：x ${op} ${x}`;
+  return { type: "選擇題", text, answer, steps, options: makeOptions(op, x) };
+}
+
+function lv1Fraction() {
+  const a = randInt(2, 4), x = a * randInt(-3, 4), b = randInt(-6, 6);
+  const c = x / a + b, op = pick([">", "<", ">=", "<="]);
+  const answer = fmt(op, x);
+  const text = `x/${a} ${b >= 0 ? "+ " + b : "- " + Math.abs(b)} ${op} ${c}`;
+  const steps = `移項：x/${a} ${op} ${c - b}\n兩邊乘以 ${a}（正數，不變號）：x ${op} ${x}`;
+  return { type: "選擇題", text, answer, steps, options: makeOptions(op, x) };
+}
+
+function lv1Fill() {
+  const q = pick([lv1Basic, lv1Negative, lv1Bracket, lv1Fraction])();
+  return { type: "填空題", text: q.text, answer: q.answer, steps: q.steps, isFill: true };
+}
+
+function lv1NumberLine() {
+  const val = randInt(-5, 5), sign = pick([">", "<", ">=", "<="]);
+  const answer = fmt(sign, val);
+  return {
+    type: "數線題",
+    text: "下列哪一個不等式的解集對應圖中的數線？<br><span style='font-size:0.8rem;color:#888'>Which inequality matches the number line?</span>",
+    answer, steps: `數線顯示 x ${sign} ${val}`,
+    options: makeOptions(sign, val), numberline: { sign, val }
+  };
+}
+
+/* ============ Level 2 題目生成器 ============ */
+// 兩邊都有未知數： ax + b > cx + d
+function lv2BothSides() {
+  const a = randInt(3, 7), c = randInt(1, a - 1); 
+  const x = randInt(-5, 6), d = randInt(-8, 8);
+  const b = (c - a) * x + d; 
+  const op = pick([">", "<", ">=", "<="]);
+  const answer = fmt(op, x);
+  
+  const formatPart = (coeff) => {
+    if (coeff === 1) return "x";
+    if (coeff === -1) return "-x";
+    return coeff + "x";
+  };
+
+  const leftStr = `${formatPart(a)} ${b >= 0 ? "+ " + b : "- " + Math.abs(b)}`;
+  const rightStr = `${formatPart(c)} ${d >= 0 ? "+ " + d : "- " + Math.abs(d)}`;
+  const text = `${leftStr} ${op} ${rightStr}`;
+
+  const steps = `移項（將 x 移到左邊，常數移到右邊）：\n${a}x - ${c}x ${op} ${d} ${b >= 0 ? "- " + b : "+ " + Math.abs(b)}\n${a-c}x ${op} ${d - b}\n兩邊除以 ${a-c}（正數，不變號）：x ${op} ${x}`;
+  return { type: "選擇題", text, answer, steps, options: makeOptions(op, x) };
+}
+
+// 複雜括號及負號： -a(x+b) < c
+function lv2ComplexBracket() {
+  const a = randInt(2, 4), b = randInt(-5, 5), x = randInt(-4, 5);
+  const c = -a * (x + b);
+  const op = pick([">", "<", ">=", "<="]);
+  const flip = { ">": "<", "<": ">", ">=": "<=", "<=": ">=" };
+  const ansSign = flip[op];
+  const answer = fmt(ansSign, x);
+  const text = `-${a}(x ${b >= 0 ? "+ " + b : "- " + Math.abs(b)}) ${op} ${c}`;
+  const steps = `展開：-${a}x ${-a*b >= 0 ? "+ " + (-a*b) : "- " + Math.abs(-a*b)} ${op} ${c}\n移項：-${a}x ${op} ${c + a*b}\n兩邊除以 -${a}（負數，變號）：x ${ansSign} ${x}`;
+  return { type: "選擇題", text, answer, steps, options: makeOptions(ansSign, x) };
+}
+
+// 中英對照文字題
+function lv2WordProblem() {
+  const scenarios = [
+    () => {
+      const start = randInt(50, 150), num = randInt(2, 5), remain = randInt(10, 30);
+      const limit = Math.floor((start - remain) / num);
+      const actualRemain = start - num * limit;
+      const answer = fmt("<", limit);
+      const textHTML = `
+        <div class="zh">小明有 $${start} 元，他買了 ${num} 本相同的書，還剩下超過 $${actualRemain} 元。設每本書售價為 x 元，求 x 的範圍。</div>
+        <div class="en">Ming has $${start}. He buys ${num} identical books and has more than $${actualRemain} left. Let the price of each book be $x. Find the range of x.</div>
+      `;
+      const steps = `根據題意：${start} - ${num}x > ${actualRemain}\n移項：-${num}x > ${actualRemain - start}\n兩邊除以 -${num}（變號）：x < ${limit}`;
+      return { type: "文字題", text: textHTML, answer, steps, options: makeOptions("<", limit) };
+    },
+    () => {
+      const num = randInt(3, 6), peri = num * 4 + randInt(10, 20); 
+      const limit = peri / 2 - num;
+      const answer = fmt(">=", limit);
+      const textHTML = `
+        <div class="zh">一個長方形的長度是 ${num} cm，闊度是 x cm。若周界最少是 ${peri} cm，求 x 的範圍。</div>
+        <div class="en">The length of a rectangle is ${num} cm and its width is x cm. If the perimeter is at least ${peri} cm, find the range of x.</div>
+      `;
+      const steps = `周界 = 2(長 + 闊) ≥ ${peri}\n2(${num} + x) ≥ ${peri}\n${num*2} + 2x ≥ ${peri}\n2x ≥ ${peri - num*2}\nx ≥ ${limit}`;
+      return { type: "文字題", text: textHTML, answer, steps, options: makeOptions(">=", limit) };
+    },
+    () => {
+      const price = randInt(5, 12), bag = randInt(40, 80), budget = price * 4 + bag + randInt(0, 10);
+      const limit = Math.floor((budget - bag) / price); 
+      const answer = fmt("<=", limit);
+      const textHTML = `
+        <div class="zh">陳老師買了 ${limit + 1} 枝筆，每枝售價為 x 元，另外買了一個 $${bag} 元的書包。若總花費不超過 $${budget} 元，求 x 的範圍。</div>
+        <div class="en">Mr. Chan buys ${limit + 1} pens costing $x each and a bag for $${bag}. If the total cost is at most $${budget}, find the range of x.</div>
+      `;
+      const steps = `根據題意：${limit+1}x + ${bag} ≤ ${budget}\n移項：${limit+1}x ≤ ${budget - bag}\n兩邊除以 ${limit+1}：x ≤ ${limit}`;
+      return { type: "文字題", text: textHTML, answer, steps, options: makeOptions("<=", limit) };
+    }
+  ];
+  return pick(scenarios)();
+}
+
+function lv2Fill() {
+  const q = pick([lv2BothSides, lv2ComplexBracket])();
+  return { type: "填空題", text: q.text, answer: q.answer, steps: q.steps, isFill: true };
+}
+
+function lv2NumberLine() {
+  const val = randInt(-6, 6), sign = pick([">", "<", ">=", "<="]);
+  const answer = fmt(sign, val);
+  return {
+    type: "數線題",
+    text: "下列哪一個不等式的解集對應圖中的數線？<br><span style='font-size:0.8rem;color:#888'>Which inequality matches the number line?</span>",
+    answer, steps: `數線顯示 x ${sign} ${val}`,
+    options: makeOptions(sign, val), numberline: { sign, val }
+  };
+}
+
+/* ============ SVG 數線圖片生成器 ============ */
+function getNumberLineSVG(sign, val) {
+  const min = -7, max = 7; // 擴大範圍
+  const total = max - min;
+  const width = 600, height = 100;
+  const marginX = 30;
+  const axisY = 50;
+  const axisLength = width - marginX * 2;
+
+  const getX = (v) => marginX + ((v - min) / total) * axisLength;
+  const vX = getX(val);
+
+  let svg = `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" class="numberline-svg">`;
+  svg += `<rect width="100%" height="100%" fill="#ffffff" />`;
+  svg += `<line x1="${marginX}" y1="${axisY}" x2="${width-marginX}" y2="${axisY}" stroke="#333" stroke-width="3" stroke-linecap="round"/>`;
+
+  if (sign === ">" || sign === ">=") {
+    svg += `<line x1="${vX}" y1="${axisY}" x2="${width-marginX}" y2="${axisY}" stroke="#764ba2" stroke-width="8" stroke-opacity="0.6" stroke-linecap="round"/>`;
+  } else {
+    svg += `<line x1="${marginX}" y1="${axisY}" x2="${vX}" y2="${axisY}" stroke="#764ba2" stroke-width="8" stroke-opacity="0.6" stroke-linecap="round"/>`;
+  }
+
+  for (let i = min; i <= max; i++) {
+    const x = getX(i);
+    svg += `<line x1="${x}" y1="${axisY-6}" x2="${x}" y2="${axisY+6}" stroke="#555" stroke-width="2"/>`;
+    if (i % 2 === 0) {
+      svg += `<text x="${x}" y="${axisY+25}" font-size="16" font-weight="bold" fill="#333" text-anchor="middle" font-family="sans-serif">${i}</text>`;
+    }
+  }
+
+  const filled = sign === ">=" || sign === "<=";
+  if (filled) {
+    svg += `<circle cx="${vX}" cy="${axisY}" r="10" fill="#764ba2" stroke="#764ba2" stroke-width="3" />`;
+  } else {
+    svg += `<circle cx="${vX}" cy="${axisY}" r="10" fill="#ffffff" stroke="#764ba2" stroke-width="3" />`;
+  }
+
+  svg += `</svg>`;
+  return svg;
+}
+
+function showLightbox(sign, val) {
+  document.getElementById("lightboxContent").innerHTML = getNumberLineSVG(sign, val);
+  document.getElementById("lightbox").classList.add("show");
+}
+function closeLightbox() {
+  document.getElementById("lightbox").classList.remove("show");
+}
+
+/* ============ 遊戲狀態與流程 ============ */
+const TOTAL_Q = 10;
+const TIME_LIMIT = 45;
+let state = {};
+
+function showStartScreen() {
+  document.getElementById("startScreen").classList.remove("hidden");
+  document.getElementById("gameScreen").classList.add("hidden");
+  document.getElementById("resultScreen").classList.add("hidden");
+}
+
+function startGame(level) {
+  const currentLevel = level || 1;
+  state = {
+    level: currentLevel,
+    qIndex: 0, score: 0, correctCount: 0, answered: false,
+    questions: generateQuestions(TOTAL_Q, currentLevel),
+    qStartTime: 0, totalTimeSpent: 0 
+  };
+  document.getElementById("startScreen").classList.add("hidden");
+  document.getElementById("resultScreen").classList.add("hidden");
+  document.getElementById("gameScreen").classList.remove("hidden");
+  loadQuestion();
+}
+
+function generateQuestions(n, level) {
+  const lv1Gens = [lv1Basic, lv1Negative, lv1Bracket, lv1Fraction, lv1Fill, lv1NumberLine];
+  const lv2Gens = [lv2BothSides, lv2ComplexBracket, lv2WordProblem, lv2Fill, lv2NumberLine];
+  
+  const gens = level === 2 ? lv2Gens : lv1Gens;
+  const qs = [];
+  const bag = shuffle(gens);
+  for (let i = 0; i < n; i++) {
+    let g;
+    if (i < bag.length) g = bag[i];
+    else g = pick(gens);
+    qs.push(g());
+  }
+  return qs;
+}
+
+let timerId = null;
+function startQuestionTimer() {
+  stopTimer();
+  state.qStartTime = Date.now();
+  const timerEl = document.getElementById("timerDisplay");
+  timerEl.classList.remove("warn");
+
+  function update() {
+    let elapsed = Math.floor((Date.now() - state.qStartTime) / 1000);
+    let remain = TIME_LIMIT - elapsed;
+    if (remain <= 0) {
+      timerEl.textContent = `超時 ${Math.abs(remain)}s`;
+      timerEl.classList.add("warn");
+    } else {
+      timerEl.textContent = `${remain}s`;
+    }
+  }
+  update();
+  timerId = setInterval(update, 200);
+}
+
+function stopTimer() {
+  if (timerId) clearInterval(timerId);
+}
+
+function loadQuestion() {
+  const q = state.questions[state.qIndex];
+  state.answered = false;
+  document.getElementById("feedback").className = "feedback";
+  document.getElementById("feedback").innerHTML = "";
+  document.getElementById("nextBtn").classList.add("hidden");
+  document.getElementById("nlContainer").innerHTML = "";
+
+  document.getElementById("qCounter").textContent = `第 ${state.qIndex + 1} / ${TOTAL_Q} 題`;
+  document.getElementById("scoreDisplay").textContent = `得分：${state.score}`;
+  document.getElementById("progressBar").style.width = ((state.qIndex) / TOTAL_Q * 100) + "%";
+  document.getElementById("qType").textContent = q.type;
+  document.getElementById("qText").innerHTML = q.text; // 使用 innerHTML 以支援中英對照排版
+
+  // 渲染數線圖片
+  if (q.numberline) {
+    const container = document.getElementById("nlContainer");
+    const wrap = document.createElement("div");
+    wrap.className = "numberline-wrap";
+    wrap.innerHTML = getNumberLineSVG(q.numberline.sign, q.numberline.val);
+    wrap.onclick = () => showLightbox(q.numberline.sign, q.numberline.val);
+    container.appendChild(wrap);
+  }
+
+  const area = document.getElementById("answerArea");
+  area.innerHTML = "";
+
+  if (q.isFill) {
+    const wrap = document.createElement("div");
+    wrap.className = "input-area";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "answer-input";
+    input.placeholder = "例如：x > 3";
+    input.autocomplete = "off";
+    input.id = "fillInput";
+    const btn = document.createElement("button");
+    btn.className = "submit-btn";
+    btn.textContent = "提交答案";
+    btn.onclick = () => checkFill(q, input.value);
+    input.addEventListener("keydown", e => { if (e.key === "Enter") checkFill(q, input.value); });
+    wrap.appendChild(input);
+    wrap.appendChild(btn);
+    area.appendChild(wrap);
+    setTimeout(() => input.focus(), 100);
+  } else {
+    const grid = document.createElement("div");
+    grid.className = "options";
+    q.options.forEach(opt => {
+      const b = document.createElement("button");
+      b.className = "option-btn";
+      b.textContent = opt;
+      b.onclick = () => checkChoice(q, opt, b, grid);
+      grid.appendChild(b);
+    });
+    area.appendChild(grid);
+  }
+  
+  startQuestionTimer();
+}
+
+function checkChoice(q, chosen, btn, grid) {
+  if (state.answered) return;
+  state.answered = true;
+  stopTimer();
+  
+  const timeTaken = Math.round((Date.now() - state.qStartTime) / 1000);
+  state.totalTimeSpent += timeTaken;
+
+  const isCorrect = chosen === q.answer;
+  grid.querySelectorAll("button").forEach(b => {
+    b.disabled = true;
+    if (b.textContent === q.answer) b.classList.add("correct");
+  });
+  if (!isCorrect) btn.classList.add("wrong");
+  finishAnswer(isCorrect, q, timeTaken);
+}
+
+function checkFill(q, raw) {
+  if (state.answered) return;
+  const user = normalizeAnswer(raw);
+  const isCorrect = user === normalizeAnswer(q.answer);
+  state.answered = true;
+  stopTimer();
+  
+  const timeTaken = Math.round((Date.now() - state.qStartTime) / 1000);
+  state.totalTimeSpent += timeTaken;
+
+  document.querySelectorAll(".answer-input, .submit-btn").forEach(el => el.disabled = true);
+  finishAnswer(isCorrect, q, timeTaken, raw);
+}
+
+function finishAnswer(isCorrect, q, timeTaken, raw) {
+  const fb = document.getElementById("feedback");
+  if (isCorrect) {
+    state.score += 10;
+    state.correctCount++;
+    fb.className = "feedback show ok";
+    fb.innerHTML = `✅ 答對了！(用時 ${timeTaken} 秒)<div class="steps">${q.steps}</div>`;
+  } else {
+    fb.className = "feedback show no";
+    let extra = "";
+    if (raw !== undefined) extra = `<br>你的答案：${raw || "（空白）"}`;
+    fb.innerHTML = `❌ 答錯了。(用時 ${timeTaken} 秒)<br>正確答案：<strong>${q.answer}</strong>${extra}<div class="steps">${q.steps}</div>`;
+  }
+  document.getElementById("scoreDisplay").textContent = `得分：${state.score}`;
+  const nb = document.getElementById("nextBtn");
+  nb.classList.remove("hidden");
+  nb.textContent = (state.qIndex === TOTAL_Q - 1) ? "查看結果 ➜" : "下一題 ➜";
+  nb.onclick = nextQuestion;
+}
+
+function nextQuestion() {
+  state.qIndex++;
+  if (state.qIndex >= TOTAL_Q) {
+    endGame();
+  } else {
+    loadQuestion();
+  }
+}
+
+function endGame() {
+  stopTimer();
+  document.getElementById("gameScreen").classList.add("hidden");
+  const rs = document.getElementById("resultScreen");
+  rs.classList.remove("hidden");
+  
+  document.getElementById("finalScore").textContent = state.score + " 分";
+  document.getElementById("finalCorrect").innerHTML = `答對：<strong>${state.correctCount}</strong> / ${TOTAL_Q} 題`;
+  
+  const m = String(Math.floor(state.totalTimeSpent / 60)).padStart(2, "0");
+  const s = String(state.totalTimeSpent % 60).padStart(2, "0");
+  
+  let timeStr = `總答題所用時間：<strong>${m}:${s}</strong>`;
+  if (state.totalTimeSpent > TOTAL_Q * TIME_LIMIT) {
+    timeStr += ` <span class="overtime">（有題目超時）</span>`;
+  }
+  document.getElementById("finalTime").innerHTML = timeStr;
+}
+
+// 初始化顯示開始畫面
+showStartScreen();
+</script>
+</body>
+</html>
